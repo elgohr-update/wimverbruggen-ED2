@@ -479,7 +479,6 @@ module libxml2f90_interface_module
   interface libxml2f90__addid
      module procedure libxml2f90_ll_addidr8
      module procedure libxml2f90_ll_addidr8a
-     module procedure libxml2f90_ll_addidc8
   end interface
 
   
@@ -607,8 +606,8 @@ contains
     character(*),intent(in)        :: id
     real(8),intent(in)             :: value
     integer(4)                     :: size_ 
-    character(32)                  :: ch
-    character, dimension(32)       :: chvec
+    character(256)                 :: ch
+    character, dimension(256)      :: chvec
     integer                        :: s
     !............................................
     
@@ -631,9 +630,8 @@ contains
     character(*),intent(in)        :: id
     integer(4),intent(in)          :: n
     real(8),intent(in)             :: value(n)
-    character(32)                  :: ch(n)
+    character(256)                 :: ch(n)
     integer(4)                     :: i,l,ipos
-    integer(4)                     :: size_
     character(1),allocatable       :: ch1(:)
     !............................................
     ipos=0
@@ -659,26 +657,6 @@ contains
     deallocate(ch1)
     return
   end subroutine libxml2f90_ll_addidr8a
-
-
-  subroutine libxml2f90_ll_addidc8(id,value)
-    use libxml2f90_strings_module
-    implicit none
-    character(*),intent(in)        :: id
-    complex(8),intent(in)          :: value
-    integer(4)                     :: size_ 
-    character(32)                  :: ch
-    !............................................
-    
-!!__    !convert the value to a string
-!!__    ch=r_2_s(value)
-!!__    
-!!__    size_=len(trim(adjustl(ch)))
-!!__    call libxml2f90_ll_addid(id,size_,ch)
-!!__    
-!!__    return
-  end subroutine libxml2f90_ll_addidc8
- 
 
 
 end module libxml2f90_interface_module
@@ -853,8 +831,8 @@ end subroutine libxml2f90__getunit
        use libxml2f90_module
        IMPLICIT NONE
        integer(4),intent(in)       :: nfil
-       character(256)              :: file,access,form,action,pad,direct
-       character(256)              :: status,blank,position,delim
+       character(256)              :: file,access,form,action,pad
+       character(256)              :: blank,position,delim
        logical(4)                  :: opened
        integer(4)                  :: recl
        !....................................
@@ -3631,7 +3609,7 @@ end subroutine libxml2f90__ll_report
 !====================================================================
 
 
-subroutine libxml2f90_ll_report_rec_wrap(LL_ID,nfil,nind)
+recursive subroutine libxml2f90_ll_report_rec_wrap(LL_ID,nfil,nind)
   implicit none
   character(*),intent(in)       :: ll_id !the id of the linklist
   integer(4),intent(in)         :: nfil !the file unit we report to
@@ -3645,7 +3623,7 @@ end subroutine libxml2f90_ll_report_rec_wrap
 !====================================================================
 
 
-subroutine libxml2f90_ll_report_rec(LL_ID,nfil,nind)
+recursive subroutine libxml2f90_ll_report_rec(LL_ID,nfil,nind)
   use ll_module
   use libxml2f90_module, only: twrite_paw,indstep 
   implicit none

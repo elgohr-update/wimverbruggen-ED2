@@ -439,13 +439,12 @@ subroutine ed_opspec_times
                            , itimez           & ! intent(in)
                            , dtlsm            & ! intent(in)
                            , radfrq           & ! intent(in)
+                           , month_yrstep     & ! intent(in)
                            , ifoutput         & ! intent(in)
                            , isoutput         & ! intent(in)
                            , idoutput         & ! intent(in)
                            , imoutput         & ! intent(in)
-                           , iyoutput         & ! intent(in)
                            , iqoutput         & ! intent(in)
-                           , itoutput         & ! intent(in)
                            , nrec_fast        & ! intent(in)
                            , nrec_state       & ! intent(in)
                            , outfast          & ! intent(in)
@@ -455,7 +454,6 @@ subroutine ed_opspec_times
    use consts_coms  , only : day_sec          & ! intent(in)
                            , hr_sec           ! ! intent(in)
    use grid_coms    , only : timmax           ! ! intent(in)
-   use ed_misc_coms , only : fast_diagnostics ! ! intent(in)
    use ed_max_dims  , only : str_len          ! ! intent(in)
 
    implicit none
@@ -1105,6 +1103,18 @@ subroutine ed_opspec_times
 
 
 
+   !----- MONTH_YRSTEP must be a valid month. ---------------------------------------------!
+   if (month_yrstep < 1 .or. month_yrstep > 12) then
+      write(reason,fmt='(2a,1x,i6,a)') 'MONTH_YRSTEP must be a a valid calendar month '    &
+                                      ,'(1-12), and yours is set to',month_yrstep,'...'
+      call opspec_fatal(reason,'opspec_times')  
+      ifaterr=ifaterr+1
+   end if
+   !---------------------------------------------------------------------------------------!
+
+
+
+
    !------ Stop the run if there are any fatal errors. ------------------------------------!
    if (ifaterr > 0) then
       write (unit=*,fmt='(a)')       ' -----------ED_OPSPEC_TIMES ------------------------'
@@ -1135,14 +1145,20 @@ end subroutine ed_opspec_times
 !------------------------------------------------------------------------------------------!
 subroutine ed_opspec_misc
    use ed_max_dims           , only : n_pft                        & ! intent(in)
-                                    , str_len                      ! ! intent(in)
+                                    , str_len                      & ! intent(in)
+                                    , skip_integer                 & ! intent(in)
+                                    , skip_real                    ! ! intent(in)
    use ed_misc_coms          , only : ifoutput                     & ! intent(in)
                                     , idoutput                     & ! intent(in)
                                     , iqoutput                     & ! intent(in)
                                     , imoutput                     & ! intent(in)
                                     , iyoutput                     & ! intent(in)
                                     , itoutput                     & ! intent(in)
+                                    , iooutput                     & ! intent(in)
                                     , isoutput                     & ! intent(in)
+                                    , igoutput                     & ! intent(in)
+                                    , iyeara                       & ! intent(in)
+                                    , iyearz                       & ! intent(in)
                                     , iadd_site_means              & ! intent(in)
                                     , iadd_patch_means             & ! intent(in)
                                     , iadd_cohort_means            & ! intent(in)
@@ -1152,7 +1168,9 @@ subroutine ed_opspec_misc
                                     , ivegt_dynamics               & ! intent(in)
                                     , ibigleaf                     & ! intent(in)
                                     , integration_scheme           & ! intent(in)
+                                    , nsub_euler                   & ! intent(in)
                                     , iallom                       & ! intent(in)
+                                    , economics_scheme             & ! intent(in)
                                     , igrass                       & ! intent(in)
                                     , growth_resp_scheme           & ! intent(in)
                                     , storage_resp_scheme          & ! intent(in)
@@ -1166,17 +1184,26 @@ subroutine ed_opspec_misc
                                     , gamm                         & ! intent(in)
                                     , gamh                         & ! intent(in)
                                     , tprandtl                     & ! intent(in)
+                                    , lwidth_grass                 & ! intent(in)
+                                    , lwidth_bltree                & ! intent(in)
+                                    , lwidth_nltree                & ! intent(in)
                                     , ribmax                       & ! intent(in)
                                     , leaf_maxwhc                  ! ! intent(in)
    use soil_coms             , only : ed_nstyp                     & ! intent(in)
                                     , ed_nscol                     & ! intent(in)
                                     , isoilflg                     & ! intent(in)
+                                    , islcolflg                    & ! intent(in)
                                     , nslcon                       & ! intent(in)
                                     , isoilcol                     & ! intent(in)
                                     , slxclay                      & ! intent(in)
                                     , slxsand                      & ! intent(in)
+                                    , slsoc                        & ! intent(in)
+                                    , slph                         & ! intent(in)
+                                    , slcec                        & ! intent(in)
+                                    , sldbd                        & ! intent(in)
                                     , isoilstateinit               & ! intent(in)
                                     , isoildepthflg                & ! intent(in)
+                                    , soil_hydro_scheme            & ! intent(in)
                                     , isoilbc                      & ! intent(in)
                                     , sldrain                      & ! intent(in)
                                     , zrough                       & ! intent(in)
@@ -1186,9 +1213,16 @@ subroutine ed_opspec_misc
    use grid_coms             , only : ngrids                       ! ! intent(in)
    use physiology_coms       , only : iphysiol                     & ! intent(in)
                                     , h2o_plant_lim                & ! intent(in)
+                                    , plant_hydro_scheme           & ! intent(in)
+                                    , istomata_scheme              & ! intent(in)
+                                    , istruct_growth_scheme        & ! intent(in)
+                                    , istem_respiration_scheme     & ! intent(in)
+                                    , trait_plasticity_scheme      & ! intent(in)
                                     , iddmort_scheme               & ! intent(in)
                                     , cbr_scheme                   & ! intent(in)
                                     , ddmort_const                 & ! intent(in)
+                                    , hydraulic_mortality_scheme   & ! intent(in)
+                                    , carbon_mortality_scheme      & ! intent(in)
                                     , n_plant_lim                  & ! intent(in)
                                     , vmfact_c3                    & ! intent(in)
                                     , vmfact_c4                    & ! intent(in)
@@ -1209,9 +1243,6 @@ subroutine ed_opspec_misc
                                     , klowco2in                    & ! intent(in)
                                     , rrffact                      & ! intent(in)
                                     , growthresp                   & ! intent(in)
-                                    , lwidth_grass                 & ! intent(in)
-                                    , lwidth_bltree                & ! intent(in)
-                                    , lwidth_nltree                & ! intent(in)
                                     , q10_c3                       & ! intent(in)
                                     , q10_c4                       & ! intent(in)
                                     , quantum_efficiency_T         ! ! intent(in)
@@ -1223,7 +1254,21 @@ subroutine ed_opspec_misc
                                     , sm_fire                      & ! intent(in)
                                     , time2canopy                  & ! intent(in)
                                     , treefall_disturbance_rate    & ! intent(in)
-                                    , min_patch_area               ! ! intent(in)
+                                    , min_patch_area               & ! intent(in)
+                                    , sl_scale                     & ! intent(in)
+                                    , sl_yr_first                  & ! intent(in)
+                                    , sl_nyrs                      & ! intent(in)
+                                    , sl_pft                       & ! intent(in)
+                                    , sl_prob_harvest              & ! intent(in)
+                                    , sl_mindbh_harvest            & ! intent(in)
+                                    , sl_biomass_harvest           & ! intent(in)
+                                    , sl_skid_rel_area             & ! intent(in)
+                                    , sl_skid_s_gtharv             & ! intent(in)
+                                    , sl_skid_s_ltharv             & ! intent(in)
+                                    , sl_felling_s_ltharv          & ! intent(in)
+                                    , cl_fseeds_harvest            & ! intent(in)
+                                    , cl_fstorage_harvest          & ! intent(in)
+                                    , cl_fleaf_harvest             ! ! intent(in)
    use phenology_coms        , only : iphen_scheme                 & ! intent(in)
                                     , repro_scheme                 & ! intent(in)
                                     , radint                       & ! intent(in)
@@ -1231,10 +1276,12 @@ subroutine ed_opspec_misc
                                     , thetacrit                    ! ! intent(in)
    use pft_coms              , only : include_these_pft            & ! intent(in)
                                     , pft_1st_check                & ! intent(in)
+                                    , pasture_stock                & ! intent(in)
                                     , agri_stock                   & ! intent(in)
                                     , plantation_stock             ! ! intent(in)
    use canopy_layer_coms     , only : crown_mod                    ! ! intent(in)
    use canopy_radiation_coms , only : icanrad                      & ! intent(in)
+                                    , ihrzrad                      & ! intent(in)
                                     , ltrans_vis                   & ! intent(in)
                                     , ltrans_nir                   & ! intent(in)
                                     , lreflect_vis                 & ! intent(in)
@@ -1254,11 +1301,12 @@ subroutine ed_opspec_misc
                                     , min_recruit_dbh              & ! intent(in)
                                     , idetailed                    & ! intent(in)
                                     , patch_keep                   ! ! intent(in)
-
-   use met_driver_coms       , only : imetrad                      ! ! intent(in)
+   use fusion_fission_coms   , only : ifusion                      ! ! intent(in)
 #if defined(COUPLED)
+   use met_driver_coms       , only : imetrad                      ! ! intent(in)
 #else
-   use met_driver_coms       , only : ishuffle                     & ! intent(in)
+   use met_driver_coms       , only : imetrad                      & ! intent(in)
+                                    , ishuffle                     & ! intent(in)
                                     , imetavg                      ! ! intent(in)
 #endif
 
@@ -1268,16 +1316,21 @@ subroutine ed_opspec_misc
    integer                :: ifaterr
    integer                :: ifm
    integer                :: ipft
+   logical                :: pasture_ok
    logical                :: agri_ok
    logical                :: plantation_ok
    logical                :: patch_detailed
-   !----- Local constants -----------------------------------------------------------------!
-   integer, parameter :: skip=huge(6)
-   !---------------------------------------------------------------------------------------!
+   logical                :: lu_detailed
+  !---------------------------------------------------------------------------------------!
 
    !----- IFATERR will count the number of bad set ups. -----------------------------------!
    ifaterr=0
 
+
+   if (ifusion < 0 .and. ifusion > 1) then
+      write (reason,fmt='(a,1x,i5,a)')                                                     &
+         'Invalid IFUSION, it must be 0 or 1.  Yours is set to ',ifusion,'...'
+   end if
 
    if (maxsite < 1 .and. maxsite > ed_nstyp) then
       write (reason,fmt='(a,1x,i5,a,2x,a,1x,i5,a)')                                        &
@@ -1295,6 +1348,13 @@ subroutine ed_opspec_misc
       write (reason,fmt='(a,2x,a,1x,es12.5,a)')                                            &
          'Invalid MIN_PATCH_AREA, it must be between 0.000001 and 0.02.'                   &
         ,'Yours is set to ',min_patch_area,'...'
+   end if
+
+
+   if (ifoutput == 3 .and. iooutput == 3) then
+      call warning(  'IFOUTPUT and IOOUTPUT are both on. '                                 &
+                  // 'Outputs from both are labeled -I-.'                                  &
+                  ,  'ed_opspec_misc','ed_opspec.F90')
    end if
 
    if (ifoutput /= 0 .and. ifoutput /= 3) then
@@ -1327,6 +1387,12 @@ subroutine ed_opspec_misc
       call opspec_fatal(reason,'opspec_misc')  
       ifaterr = ifaterr +1
    end if
+   if (iooutput /= 0 .and. iooutput /= 3) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+        'Invalid IOOUTPUT, it must be 0 (none) or 3 (HDF5). Yours is set to',iooutput,'...'
+      call opspec_fatal(reason,'opspec_misc')  
+      ifaterr = ifaterr +1
+   end if
    if (itoutput /= 0 .and. itoutput /= 3) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
         'Invalid ITOUTPUT, it must be 0 (none) or 3 (HDF5). Yours is set to',itoutput,'...'
@@ -1339,23 +1405,23 @@ subroutine ed_opspec_misc
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
-   if (iadd_site_means < 0 .or. iadd_site_means > 1) then
+   if (iadd_site_means < 0 .or. iadd_site_means > 7) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-        'Invalid IADD_SITE_MEANS, it must be 0 (no) or 1 (yes).  Yours is set to'          &
+        'Invalid IADD_SITE_MEANS, it must be between 0 and 7.  Yours is set to'            &
        ,iadd_site_means,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
-   if (iadd_patch_means < 0 .or. iadd_patch_means > 1) then
+   if (iadd_patch_means < 0 .or. iadd_patch_means > 7) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-        'Invalid IADD_PATCH_MEANS, it must be 0 (no) or 1 (yes).  Yours is set to'         &
+        'Invalid IADD_PATCH_MEANS, it must be between 0 and 7.  Yours is set to'           &
        ,iadd_patch_means,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
-   if (iadd_cohort_means < 0 .or. iadd_cohort_means > 1) then
+   if (iadd_cohort_means < 0 .or. iadd_cohort_means > 7) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-        'Invalid IADD_COHORT_MEANS, it must be 0 (no) or 1 (yes).  Yours is set to'        &
+        'Invalid IADD_COHORT_MEANS, it must be between 0 and 7.  Yours is set to'          &
        ,iadd_cohort_means,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
@@ -1438,7 +1504,7 @@ subroutine ed_opspec_misc
    do ifm=1,ngrids
       if (isoilflg(ifm) < 1 .or. isoilflg(ifm) > 2) then
          write (reason,fmt='(a,1x,i4,1x,a,1x,i4,a)')                                       &
-                       'Invalid ISOILFLG, it must be between 1 and 3. Yours is set to'     &
+                       'Invalid ISOILFLG, it must be between 1 and 2. Yours is set to'     &
                       ,isoilflg(ifm),'for grid',ifm,'...'
          call opspec_fatal(reason,'opspec_misc')
          ifaterr = ifaterr +1
@@ -1527,7 +1593,17 @@ do ifm=1,ngrids
       write (unit=*,fmt='(a)') '==========================================================='
    end if
 end do
-   
+
+do ifm=1,ngrids
+   if (islcolflg(ifm) < 1 .or. islcolflg(ifm) > 2) then
+      write (reason,fmt='(a,1x,i4,1x,a,1x,i4,a)')                                          &
+                    'Invalid ISLCOLFLG, it must be between 1 and 2. Yours is set to'       &
+                   ,islcolflg(ifm),'for grid',ifm,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+end do
+
 #if defined(COUPLED)
    if (isoilstateinit < 0 .or. isoilstateinit > 2) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
@@ -1547,9 +1623,9 @@ end do
 #endif
 
 
-   if (isoildepthflg < 0 .or. isoildepthflg > 1) then
+   if (isoildepthflg < 0 .or. isoildepthflg > 2) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-              'Invalid ISOILDEPTHFLG, it must be between 0 and 1. Yours is set to'         &
+              'Invalid ISOILDEPTHFLG, it must be between 0 and 2. Yours is set to'         &
               ,isoildepthflg,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
@@ -1566,6 +1642,51 @@ end do
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
+
+   !---------------------------------------------------------------------------------------!
+   !     Check soil hydraulics scheme.                                                     !
+   !---------------------------------------------------------------------------------------!
+   if (soil_hydro_scheme < 0 .or. soil_hydro_scheme > 2) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+         'Invalid SOIL_HYDRO_SCHEME, it must be between 0 and 2.  Yours is set to'         &
+        ,soil_hydro_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   elseif (soil_hydro_scheme == 2) then
+      !------------------------------------------------------------------------------------!
+      !   In case SOIL_HYDRO_SCHEME = 2, check additional soil properties.                 !
+      !------------------------------------------------------------------------------------!
+      !----- Soil Organic Carbon content must be between 0. and 1.0. ----------------------!
+      if (slsoc < 0. .or. slsoc > 1.0) then
+         write (reason,fmt='(a,1x,es12.5,a)')                                              &
+            'Invalid SLSOC, it must be between 0. and 1.  Yours is set to',slsoc,'...'
+         call opspec_fatal(reason,'opspec_misc')
+         ifaterr = ifaterr +1
+      end if
+      !----- Soil pH content must be between 0. and 14. -----------------------------------!
+      if (slph < 0. .or. slph > 14.) then
+         write (reason,fmt='(a,1x,es12.5,a)')                                              &
+            'Invalid SLPH, it must be between 0. and 14.  Yours is set to',slph,'...'
+         call opspec_fatal(reason,'opspec_misc')
+         ifaterr = ifaterr +1
+      end if
+      !----- Soil cation exchange capacity must be between 0. and 1. ----------------------!
+      if (slcec < 0. .or. slcec > 1.) then
+         write (reason,fmt='(a,1x,es12.5,a)')                                              &
+            'Invalid SLCEC, it must be between 0. and 1.  Yours is set to',slcec,'...'
+         call opspec_fatal(reason,'opspec_misc')
+         ifaterr = ifaterr +1
+      end if
+      !----- Soil dry bulk density must be between 100. and 2000. -------------------------!
+      if (sldbd < 100. .or. sldbd > 2000.) then
+         write (reason,fmt='(a,1x,es12.5,a)')                                              &
+            'Invalid SLDBD, it must be between 100. and 2000.  Yours is set to',sldbd,'...'
+         call opspec_fatal(reason,'opspec_misc')
+         ifaterr = ifaterr +1
+      end if
+      !------------------------------------------------------------------------------------!
+   end if
+   !---------------------------------------------------------------------------------------!
 
    if (ivegt_dynamics < 0 .or. ivegt_dynamics > 1) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
@@ -1620,7 +1741,8 @@ end do
          call opspec_fatal(reason,'opspec_misc')
          ifaterr = ifaterr +1
       end if
-      
+      !------------------------------------------------------------------------------------!
+
       !------------------------------------------------------------------------------------!
       !   Check the Runge-Kutta tolerance.                                                 !
       !------------------------------------------------------------------------------------!
@@ -1631,6 +1753,24 @@ end do
          call opspec_fatal(reason,'opspec_misc')
          ifaterr = ifaterr +1
       end if
+      !------------------------------------------------------------------------------------!
+
+      !------------------------------------------------------------------------------------!
+      !   In case we are using forward Euler, check whether the number of substeps makes   !
+      ! sense.                                                                             !
+      !------------------------------------------------------------------------------------!
+      select case(integration_scheme)
+      case (0)
+         if (nsub_euler < 1 .or. nsub_euler > 1000) then
+            write (reason,fmt='(a,1x,i4,a)')                                               &
+                      'Invalid NSUB_EULER, it must be between 1 and 1000. Yours is set to' &
+                      ,nsub_euler,'...'
+            call opspec_fatal(reason,'opspec_misc')
+            ifaterr = ifaterr +1
+         end if
+      end select
+      !------------------------------------------------------------------------------------!
+
    case default
       write (reason,fmt='(a,1x,i4,a)')                                                     &
                'Invalid INTEGRATION_SCHEME, it must be 0, 1, 2, or 3. Yours is set to'     &
@@ -1640,6 +1780,59 @@ end do
    end select
    !---------------------------------------------------------------------------------------!
 
+   if (plant_hydro_scheme < 0 .or. plant_hydro_scheme > 2) then
+      write (reason,fmt='(a,1x,a,1x,i4,a)')                                                &
+                    'Invalid PLANT_HYDRO_SCHEME, it must be between 0 and 2.'              &
+                   ,'Yours is set to' ,plant_hydro_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   else if (plant_hydro_scheme > 0 .and. igrass /= 0) then
+      write(reason,fmt='(a,1x,i4,a,1x,i4,a)')                                              &
+                   ' Dynamic plant hydraulics (PLANT_HYDRO_SCHEME =',plant_hydro_scheme    &
+                   ,') cannot be used with new grass scheme (IGRASS =',igrass,').'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   else if (plant_hydro_scheme > 0 .and. ibranch_thermo == 0) then
+      write(reason,fmt='(a,1x,i4,a,1x,i4,a)')                                              &
+                   ' Dynamic plant hydraulics (PLANT_HYDRO_SCHEME =',plant_hydro_scheme    &
+                   ,') cannot run with disabled branch thermodynamics (IBRANCH_THERMO ='   &
+                   ,ibranch_thermo,').'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (istomata_scheme < 0 .or. istomata_scheme > 1) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid ISTOMATA_SCHEME, it must be between 0 and 1. Yours is set to' &
+                    ,istomata_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (istruct_growth_scheme < 0 .or. istruct_growth_scheme > 1) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid ISTRUCT_GROWTH_SCHEME, it must be between 0 and 1. Yours is set to'   &
+                    ,istruct_growth_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (istem_respiration_scheme < 0 .or. istem_respiration_scheme > 1) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid ISTEM_RESPIRATION_SCHEME, it must be between 0 and 1. Yours is set to'   &
+                    ,istem_respiration_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (trait_plasticity_scheme < -2 .or. trait_plasticity_scheme > 3) then
+      write (reason,fmt='(2a,1x,i4,a)')                                                    &
+                    'Invalid TRAIT_PLASTICITY_SCHEME, it must be between -2 and 3.'        &
+                   ,' Yours is set to',trait_plasticity_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
    if (iphysiol < 0 .or. iphysiol > 3) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
                     'Invalid IPHYSIOL, it must be between 0 and 3. Yours is set to'        &
@@ -1648,10 +1841,18 @@ end do
       ifaterr = ifaterr +1
    end if
 
-   if (iallom < 0 .or. iallom > 3) then
+   if (iallom < 0 .or. iallom > 4) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid IALLOM, it must be between 0 and 3. Yours is set to'          &
+                    'Invalid IALLOM, it must be between 0 and 4. Yours is set to'          &
                     ,iallom,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (economics_scheme < 0 .or. economics_scheme > 1) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid ECONOMICS_SCHEME, it must be 0 or 1. Yours is set to'         &
+                    ,economics_scheme,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
@@ -1671,9 +1872,9 @@ end do
    
    end if
 
-   if (iphen_scheme < -1 .or. iphen_scheme > 3) then
+   if (iphen_scheme < -1 .or. iphen_scheme > 4) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid IPHEN_SCHEME, it must be between -1 and 3. Yours is set to'   &
+                    'Invalid IPHEN_SCHEME, it must be between -1 and 4. Yours is set to'   &
                     ,iphen_scheme,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
@@ -1687,25 +1888,83 @@ end do
       ifaterr = ifaterr +1
    end if
 
-   if (radint < -100.0 .or. radint > 100.0) then
-      write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid RADINT, it must be between -100 and 100. Yours is set to'     &
-                    ,radint,'...'
-      call opspec_fatal(reason,'opspec_misc')
-      ifaterr = ifaterr +1
-   end if
- 
-    if (radslp < 0.0 .or. radslp > 1.0) then
-      write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid RADSLP, it must be between 0 and 1. Yours is set to'          &
-                    ,radslp,'...'
-      call opspec_fatal(reason,'opspec_misc')
-      ifaterr = ifaterr +1
-   end if  
-   if (h2o_plant_lim < 0 .or. h2o_plant_lim > 2) then
+   !---------------------------------------------------------------------------------------!
+   !     Verification of radint and raslp depends on the ECONOMICS_SCHEME settings, as the !
+   ! model may be linear or log-linear.  Don't bother checking if IPHEN_SCHEME is not 3.   !
+   !---------------------------------------------------------------------------------------!
+   select case (iphen_scheme)
+   case (3)
+      !----- Light-driven phenology is enabled.  Check settings. --------------------------!
+      select case (economics_scheme)
+      case (1)
+         !------ Settings for the log-linear model. ---------------------------------------!
+         if (radint < 1.e-6 .or. radint > 100.0) then
+            write (reason,fmt='(2(a,1x,i5,1x),a,1x,es12.5,a)')                             &
+                           'Invalid RADINT.  When IPHEN_SCHEME is ',iphen_scheme           &
+                          ,' and ECONOMICS_SCHEME is',economics_scheme                     &
+                          ,' it must be between 1.e-6 and 100. Yours is set to'            &
+                          ,radint,'...'
+            call opspec_fatal(reason,'opspec_misc')
+            ifaterr = ifaterr +1
+         end if
+         if (radslp < 0.01 .or. radslp > 5.0) then
+            write (reason,fmt='(2(a,1x,i5,1x),a,1x,es12.5,a)')                             &
+                           'Invalid RADSLP.  When IPHEN_SCHEME is ',iphen_scheme           &
+                          ,' and ECONOMICS_SCHEME is',economics_scheme                     &
+                          ,' it must be between 0.01 and 5. Yours is set to'               &
+                          ,radslp,'...'
+            call opspec_fatal(reason,'opspec_misc')
+            ifaterr = ifaterr +1
+         end if
+         !---------------------------------------------------------------------------------!
+      case default
+         !------ Settings for the original scheme (linear model). -------------------------!
+         if (radint < -100.0 .or. radint > 100.0) then
+            write (reason,fmt='(2(a,1x,i5,1x),a,1x,es12.5,a)')                             &
+                           'Invalid RADINT.  When IPHEN_SCHEME is ',iphen_scheme           &
+                          ,' and ECONOMICS_SCHEME is',economics_scheme                     &
+                          ,' it must be between -100 and 100. Yours is set to'             &
+                          ,radint,'...'
+            call opspec_fatal(reason,'opspec_misc')
+            ifaterr = ifaterr +1
+         end if
+         if (radslp < 0.0 .or. radslp > 1.0) then
+            write (reason,fmt='(2(a,1x,i5,1x),a,1x,es12.5,a)')                             &
+                           'Invalid RADSLP.  When IPHEN_SCHEME is ',iphen_scheme           &
+                          ,' and ECONOMICS_SCHEME is',economics_scheme                     &
+                          ,' it must be between 0 and 1. Yours is set to'                  &
+                          ,radslp,'...'
+            call opspec_fatal(reason,'opspec_misc')
+            ifaterr = ifaterr +1
+         end if
+         !---------------------------------------------------------------------------------!
+      end select
+      !------------------------------------------------------------------------------------!
+   end select
+   !---------------------------------------------------------------------------------------!
+
+   if (h2o_plant_lim < 0 .or. h2o_plant_lim > 5) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid H2O_PLANT_LIM, it must be between 0 and 2.  Yours is set to'  &
+                    'Invalid H2O_PLANT_LIM, it must be between 0 and 5.  Yours is set to'  &
                     ,h2o_plant_lim,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   else if ( ( h2o_plant_lim == 3 .or. h2o_plant_lim == 4) .and.                           &
+             ( plant_hydro_scheme == 0 ) ) then
+      write (reason,fmt='(a,1x,i4,a,1x,a)')                                                &
+                    'H2O_PLANT_LIM is set to ',h2o_plant_lim,'.'                           &
+                   ,'This requires PLANT_HYDRO_SCHEME > 0.'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   else if (h2o_plant_lim == 4 .and. (istomata_scheme == 0)) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'H2O_PLANT_LIM cannot be set to 4 with istomata_scheme set to '        &
+                    ,istomata_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+   else if (h2o_plant_lim == 5 .and. istomata_scheme /= 0) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'H2O_PLANT_LIM cannot be set to 5 with istomata_scheme set to '        &
+                    ,istomata_scheme,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
@@ -1730,6 +1989,22 @@ end do
       write (reason,fmt='(a,1x,es12.5,a)')                                                 &
                     'Invalid DDMORT_CONST, it must be between 0 and 1.  Yours is set to'   &
                     ,ddmort_const,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (hydraulic_mortality_scheme < 0 .or. hydraulic_mortality_scheme > 1) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid HYDAULIC_MORTALITY_SCHEME, it must be between 0 and 1. Yours is set to'   &
+                    ,hydraulic_mortality_scheme,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+   end if
+
+   if (carbon_mortality_scheme < 0 .or. carbon_mortality_scheme > 2) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid CARBON_MORTALITY_SCHEME, it must be between 0 and 2. Yours is set to'   &
+                    ,carbon_mortality_scheme,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
@@ -1798,33 +2073,33 @@ end do
       ifaterr = ifaterr +1
    end if
   
-  if (kw_grass < 15. .or. kw_grass > 15000.) then
+  if (kw_grass < .15 .or. kw_grass > 15000.) then
       write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid KW_GRASS, it must be between 15 and 15000.  Yours is set to'  &
+                    'Invalid KW_GRASS, it must be between .15 and 15000.  Yours is set to' &
                     ,kw_grass,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
    
-  if (kw_tree < 15. .or. kw_tree > 15000.) then
+  if (kw_tree < .15 .or. kw_tree > 15000.) then
       write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid KW_TREE, it must be between 15 and 15000.  Yours is set to'   &
+                    'Invalid KW_TREE, it must be between .15 and 15000.  Yours is set to'  &
                     ,kw_tree,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
 
-   if (gamma_c3 < 0.001 .or. gamma_c3 > 0.10) then
+   if (gamma_c3 < 0.0 .or. gamma_c3 > 0.10) then
       write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid GAMMA_C3, it must be between 0.001 and 0.1.  Yours is set to' &
+                    'Invalid GAMMA_C3, it must be between 0.0 and 0.1.  Yours is set to'   &
                     ,gamma_c3,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
    end if
 
-   if (gamma_c4 < 0.001 .or. gamma_c4 > 0.10) then
+   if (gamma_c4 < 0.0 .or. gamma_c4 > 0.10) then
       write (reason,fmt='(a,1x,es12.5,a)')                                                 &
-                    'Invalid GAMMA_C4, it must be between 0.001 and 0.1.  Yours is set to' &
+                    'Invalid GAMMA_C4, it must be between 0.0 and 0.1.  Yours is set to'   &
                     ,gamma_c4,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
@@ -1958,9 +2233,9 @@ end do
       ifaterr = ifaterr +1
    end if
 
-   if (decomp_scheme < 0 .or. decomp_scheme > 2) then
+   if (decomp_scheme < 0 .or. decomp_scheme > 5) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid DECOMP_SCHEME, it must be between 0 and 2. Yours is set to'   &
+                    'Invalid DECOMP_SCHEME, it must be between 0 and 5. Yours is set to'   &
                     ,decomp_scheme,'...'
       call opspec_fatal(reason,'opspec_misc')
       ifaterr = ifaterr +1
@@ -1980,19 +2255,7 @@ end do
          call opspec_fatal(reason,'opspec_misc')
          ifaterr = ifaterr +1
       end if
-   end if
 
-   select case (include_fire)
-   case(3)
-      if (sm_fire < 0. .or. sm_fire > 2) then
-         write (reason,fmt='(a,1x,a,1x,i4,a,1x,es12.5,a)')                                 &
-                        'Invalid SM_FIRE, it must be between 0 and 2'                      &
-                       ,'when INLCUDE_FIRE is ',include_fire,'.  Your SM_FIRE is set to'   &
-                       ,sm_fire,'...'
-         call opspec_fatal(reason,'opspec_misc')
-         ifaterr = ifaterr +1
-      end if
-   case(0:2)
       if (sm_fire < -3.1 .or. sm_fire > 1.) then
          write (reason,fmt='(a,1x,a,1x,i4,a,1x,es12.5,a)')                                 &
                         'Invalid SM_FIRE, it must be between -3.1 and 1.0'                 &
@@ -2001,14 +2264,182 @@ end do
          call opspec_fatal(reason,'opspec_misc')
          ifaterr = ifaterr +1
       end if
-   end select
+   end if
 
-   if (ianth_disturb < 0 .or. ianth_disturb > 1) then
-      write (reason,fmt='(a,1x,i4,a)') &
-        'Invalid IANTH_DISTURB, it must be between 0 and 1. Yours is set to',ianth_disturb,'...'
+   if (ianth_disturb < 0 .or. ianth_disturb > 2) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid IANTH_DISTURB, it must be between 0 and 2. Yours is set to'   &
+                   ,ianth_disturb,'...'
       call opspec_fatal(reason,'opspec_misc')  
       ifaterr = ifaterr +1
    end if
+   
+   !---------------------------------------------------------------------------------------!
+   !      The following settings matter only when ianth_disturb is 2.                      !
+   !---------------------------------------------------------------------------------------!
+   select case (ianth_disturb)
+   case (2)
+      if (sl_scale < 0 .or. sl_scale > 1) then
+         write (reason,fmt='(a,1x,i4,a)')                                                  &
+                       'Invalid SL_SCALE, it must be either 0 and 1. Yours is set to'      &
+                      ,sl_scale,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (sl_yr_first < iyeara .or. sl_yr_first > iyearz) then
+         write (reason,fmt='(a,i4,2a,i4,a,1x,i4,a)')                                       &
+                       'Invalid SL_YR_FIRST, it must be between IYEARA (',iyeara,') and '  &
+                      ,'IYEARZ (',iyearz,'). Yours is set to',sl_yr_first,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (sl_nyrs < 1 .or. sl_nyrs > 2000) then
+         write (reason,fmt='(a,1x,i4,a)')                                                  &
+                       'Invalid SL_NYRS, it must be between 1 and 2000. Yours is set to'   &
+                      ,sl_nyrs,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      !------------------------------------------------------------------------------------!
+      !     Check whether the user is attempting to include invalid pfts.                  !
+      !------------------------------------------------------------------------------------!
+      sl_pft_loop: do ipft=1,n_pft
+         if (sl_pft(ipft) == skip_integer) then
+           if (ipft /= 1) then
+              exit sl_pft_loop
+           else
+              write (reason,fmt='(a)') 'You did not specify any valid SL_PFT.'
+              call opspec_fatal(reason,'opspec_misc')
+              ifaterr=ifaterr+1
+           end if
+         elseif (sl_pft(ipft) < 0 .or. sl_pft(ipft) > n_pft) then
+            write (reason,fmt='(a,1x,i4,a,1x,i4,a)')                                       &
+                'Invalid SL_PFT, it must be between 1 and ',n_pft                          &
+               ,'. One of yours is set to',sl_pft(ipft),'...'
+            call opspec_fatal(reason,'opspec_misc')  
+            ifaterr=ifaterr+1
+         end if
+      end do sl_pft_loop
+      !------------------------------------------------------------------------------------!
+
+      !------------------------------------------------------------------------------------!
+      !     Check whether the user is attempting to include invalid minimum DBH.           !
+      !------------------------------------------------------------------------------------!
+      sl_mindbh_loop: do ipft=1,n_pft
+         if (sl_mindbh_harvest(ipft) == skip_real) then
+           if (ipft /= 1) then
+              exit sl_mindbh_loop
+           else
+              write (reason,fmt='(a)') 'You did not specify any valid SL_MINDBH_HARVEST.'
+              call opspec_fatal(reason,'opspec_misc')
+              ifaterr=ifaterr+1
+           end if
+         elseif (sl_mindbh_harvest(ipft) < 0) then
+            write (reason,fmt='(2a,1x,es12.5,a)')                                          &
+                'Invalid SL_MINDBH_HARVEST, it must be non-negative.'                      &
+               ,' One of yours is set to',sl_mindbh_harvest(ipft),'...'
+            call opspec_fatal(reason,'opspec_misc')  
+            ifaterr=ifaterr+1
+         end if
+      end do sl_mindbh_loop
+      !------------------------------------------------------------------------------------!
+
+      !------------------------------------------------------------------------------------!
+      !     Check whether the user is attempting to include invalid harvest probability.   !
+      !------------------------------------------------------------------------------------!
+      sl_pharv_loop: do ipft=1,n_pft
+         if (sl_prob_harvest(ipft) == skip_real) then
+           if (ipft /= 1) then
+              exit sl_pharv_loop
+           else
+              write (reason,fmt='(a)') 'You did not specify any valid SL_PROB_HARVEST.'
+              call opspec_fatal(reason,'opspec_misc')
+              ifaterr=ifaterr+1
+           end if
+         elseif (sl_prob_harvest(ipft) < 0. .or. sl_prob_harvest(ipft) > 1.) then
+            write (reason,fmt='(2a,1x,es12.5,a)')                                          &
+                'Invalid SL_MINDBH_HARVEST, it must be between 0.0 and 1.0.'               &
+               ,'. One of yours is set to',sl_prob_harvest(ipft),'...'
+            call opspec_fatal(reason,'opspec_misc')  
+            ifaterr=ifaterr+1
+         end if
+      end do sl_pharv_loop
+      !------------------------------------------------------------------------------------!
+
+      if (sl_biomass_harvest < 0. .or. sl_biomass_harvest > 50.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid SL_BIOMASS_HARVEST, it must be between 0. and 50.'         &
+                      ,'  Yours is set to',sl_biomass_harvest,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+   end select
+
+   !---------------------------------------------------------------------------------------!
+   !      The following settings matter only when ianth_disturb is 1 or 2.                 !
+   !---------------------------------------------------------------------------------------!
+   select case (ianth_disturb)
+   case (1,2)
+      if (sl_skid_rel_area < 0. .or. sl_skid_rel_area > 5.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid SL_SKID_REL_AREA, it must be between 0. and 5.'            &
+                      ,'  Yours is set to',sl_skid_rel_area,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (sl_skid_s_gtharv < 0. .or. sl_skid_s_gtharv > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid SL_SKID_S_GTHARV, it must be between 0. and 1.'            &
+                      ,'  Yours is set to',sl_skid_s_gtharv,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (sl_skid_s_ltharv < 0. .or. sl_skid_s_ltharv > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid SL_SKID_S_LTHARV, it must be between 0. and 1.'            &
+                      ,'  Yours is set to',sl_skid_s_ltharv,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (sl_felling_s_ltharv < 0. .or. sl_felling_s_ltharv > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid SL_FELLING_S_LTHARV, it must be between 0. and 1.'            &
+                      ,'  Yours is set to',sl_felling_s_ltharv,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (cl_fseeds_harvest < 0. .or. cl_fseeds_harvest > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid CL_FSEEDS_HARVEST, it must be between 0. and 1.'           &
+                      ,'  Yours is set to',cl_fseeds_harvest,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (cl_fstorage_harvest < 0. .or. cl_fstorage_harvest > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid CL_FSTORAGE_HARVEST, it must be between 0. and 1.'         &
+                      ,'  Yours is set to',cl_fstorage_harvest,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+
+      if (cl_fleaf_harvest < 0. .or. cl_fleaf_harvest > 1.) then
+         write (reason,fmt='(2a,1x,es12.5,a)')                                             &
+                       'Invalid CL_FLEAF_HARVEST, it must be between 0. and 1.'            &
+                      ,'  Yours is set to',cl_fleaf_harvest,'...'
+         call opspec_fatal(reason,'opspec_misc')  
+         ifaterr = ifaterr +1
+      end if
+   end select
+   !---------------------------------------------------------------------------------------!
 
    select case (icanturb)
    case (0:4)
@@ -2023,6 +2454,11 @@ end do
    if (isfclyrm < 0 .or. isfclyrm > 4) then
       write (reason,fmt='(a,1x,i4,a)') &
         'Invalid ISFCLYRM, it must be between 0 and 4. Yours is set to',isfclyrm,'...'
+      call opspec_fatal(reason,'opspec_misc')  
+      ifaterr = ifaterr +1
+   else if (isfclyrm == 0 .and. ivegt_dynamics /= 0) then
+      write (reason,fmt='(a)')                                                             &
+            'ISFCLYRM can''t be set to 0 when vegetation dynamics is turned on...'
       call opspec_fatal(reason,'opspec_misc')  
       ifaterr = ifaterr +1
    end if
@@ -2042,10 +2478,11 @@ end do
       ifaterr = ifaterr +1
    end if
    
-   ! Checking if I am attempting to include invalid pfts. I can leave the loop once I hit
-   ! the first "huge" value
+   !---------------------------------------------------------------------------------------!
+   !     Check whether the user is attempting to include invalid pfts.                     !
+   !---------------------------------------------------------------------------------------!
    pftloop: do ipft=1,n_pft
-      if (include_these_pft(ipft) == skip) then
+      if (include_these_pft(ipft) == skip_integer) then
         if (ipft /= 1) then
            exit pftloop
         else
@@ -2062,39 +2499,33 @@ end do
          ifaterr=ifaterr+1
       end if
    end do pftloop
-   
-   !----- Checking whether the user choice for agriculture and plantation make sense. -----!
-   if (ianth_disturb == 1) then
-      !------ Checking the plantation PFT.  It must be a tree PFT. ------------------------!
-      select case (plantation_stock)
-      case (2,3,4,6,7,8,9,10,11,17)
-         continue
-      case default
-         write(reason,fmt='(a,1x,i5,a)')                                                   &
-                      'Invalid plantation_stock , it can''t be grass and yours is set to'  &
-                      ,plantation_stock,'...'
-         ifaterr = ifaterr +1
-         call opspec_fatal(reason,'opspec_misc')
-      end select
-   
-      !------ Checking the plantation PFT. It must be a grass PFT. ------------------------!
-      select case (agri_stock)
-      case (1,5,12,13,14,15,16)
-         continue
-      case default
-         write(reason,fmt='(a,1x,i5,a)')                                                   &
-            'Invalid AGRI_STOCK , it can''t be a tree and yours is set to',agri_stock,'...'
-         ifaterr = ifaterr +1
-         call opspec_fatal(reason,'opspec_misc')
-      end select
+   !---------------------------------------------------------------------------------------!
 
+
+   !---------------------------------------------------------------------------------------!
+   !     Check whether the user choice for agriculture and plantation make sense.          !
+   ! (This is consistent with the default PFTs, this check may need to be moved after the  !
+   ! PFT parameters are initialised).                                                      !
+   !---------------------------------------------------------------------------------------!
+   select case (ianth_disturb)
+   case (1,2)
+      pasture_ok    = .false.
       agri_ok       = .false.
       plantation_ok = .false.
       agriloop: do ipft=1,n_pft
-         if (include_these_pft(ipft) == skip) exit agriloop
-         if (agri_stock == include_these_pft(ipft)) agri_ok = .true.
-         if (plantation_stock == include_these_pft(ipft)) plantation_ok=.true.
+         if (include_these_pft(ipft) == skip_integer) exit agriloop
+         if (pasture_stock    == include_these_pft(ipft)) pasture_ok    = .true.
+         if (agri_stock       == include_these_pft(ipft)) agri_ok       = .true.
+         if (plantation_stock == include_these_pft(ipft)) plantation_ok = .true.
       end do agriloop
+      
+      if (.not. pasture_ok) then
+         write(reason,fmt='(a,1x,i5,a)')                                                   &
+             'Invalid PASTURE_STOCK (',pasture_stock                                       &
+            ,'). The pft must be in INCLUDE_THESE_PFT.'
+         ifaterr = ifaterr +1
+         call opspec_fatal(reason,'opspec_misc')
+      end if
       
       if (.not. agri_ok) then
          write(reason,fmt='(a,1x,i5,a)')                                                   &
@@ -2110,7 +2541,8 @@ end do
          ifaterr = ifaterr +1
          call opspec_fatal(reason,'opspec_misc')
       end if
-   end if
+   end select
+   !---------------------------------------------------------------------------------------!
 
    if (pft_1st_check < 0 .or. pft_1st_check > 2) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
@@ -2128,14 +2560,22 @@ end do
       call opspec_fatal(reason,'opspec_misc')
    end if
 
-   if  (icanrad <1 .or. icanrad > 2) then
+   if  (icanrad < 1 .or. icanrad > 2) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
                     'Invalid ICANRAD, it must be between 1 and 2.  Yours is set to'        &
                     ,icanrad,'...'
       ifaterr = ifaterr +1
       call opspec_fatal(reason,'opspec_misc')
-   elseif (icanrad /= 0 .and. crown_mod == 1) then
-      write(reason,fmt='(a)') 'CROWN_MOD must be turned off when ICANRAD is 1 or 2...'
+   elseif (icanrad == 2 .and. crown_mod == 1) then
+      write(reason,fmt='(a)') 'CROWN_MOD must be turned off when ICANRAD is 2...'
+      ifaterr = ifaterr +1
+      call opspec_fatal(reason,'opspec_misc')
+   end if
+
+   if  (ihrzrad < 0 .or. ihrzrad > 4) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid IHRZRAD, it must be between 0 and 4.  Yours is set to'        &
+                    ,ihrzrad,'...'
       ifaterr = ifaterr +1
       call opspec_fatal(reason,'opspec_misc')
    end if
@@ -2226,6 +2666,14 @@ end do
       call opspec_fatal(reason,'opspec_misc')
    end if
 
+   if (ihrzrad /= 0 .and. ihrzrad /= 4 .and. (igoutput < 0 .or. igoutput > 1)) then
+      write (reason,fmt='(a,1x,i4,a)')                                                     &
+                    'Invalid IGOUTPUT, it must be 0 or 1.  Yours is set to'                &
+                    ,igoutput,'...'
+      ifaterr = ifaterr +1
+      call opspec_fatal(reason,'opspec_misc')
+   end if
+
 
     
    if (zrough <= 0.0) then
@@ -2235,7 +2683,7 @@ end do
       ifaterr = ifaterr +1
    end if
 
-   if (treefall_disturbance_rate /= 0.0) then
+   if (treefall_disturbance_rate > 0.0) then
       if (time2canopy < 0.0) then
          write (reason,fmt='(a,1x,es14.7,a)')                                              &
                 'Invalid TIME2CANOPY, it can''t be negative.  Yours is set to'             &
@@ -2259,6 +2707,14 @@ end do
          call opspec_fatal(reason,'opspec_misc')  
          ifaterr = ifaterr +1
       end if
+   elseif (treefall_disturbance_rate < 0.0) then
+      !----- Treefall disturbance rate must be non-negative. ------------------------------!
+      write (reason,fmt='(a,1x,es14.7,a)')                                                 &
+             'Invalid TREEFALL_DISTURBANCE_RATE, it can''t be negative.  Yours is set to'  &
+             ,treefall_disturbance_rate,'...'
+      call opspec_fatal(reason,'opspec_misc')
+      ifaterr = ifaterr +1
+      !------------------------------------------------------------------------------------!
    end if
     
    
@@ -2361,9 +2817,9 @@ end do
 
 #endif
 
-   if (imetrad < 0 .or. imetrad > 4) then
+   if (imetrad < 0 .or. imetrad > 5) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid IMETRAD, it must be between 0 and 4.  Yours is set to'        &
+                    'Invalid IMETRAD, it must be between 0 and 5.  Yours is set to'        &
                     ,imetrad,'...'
       ifaterr = ifaterr +1
       call opspec_fatal(reason,'opspec_misc')
@@ -2402,9 +2858,9 @@ end do
    end if
 
 
-   if (idetailed < 0 .or. idetailed > 63) then
+   if (idetailed < 0 .or. idetailed > 127) then
       write (reason,fmt='(a,1x,i4,a)')                                                     &
-                    'Invalid IDETAILED, it must be between 0 and 63.  Yours is set to'     &
+                    'Invalid IDETAILED, it must be between 0 and 127.  Yours is set to'    &
                     ,idetailed,'...'
       ifaterr = ifaterr +1
       call opspec_fatal(reason,'opspec_misc')
@@ -2427,6 +2883,23 @@ end do
          write(unit=*,fmt='(a)')       '--------------------------------------------------'
          write (reason,fmt='(2(a,1x))') 'Only single polygon runs are allowed'             &
                                        ,'with detailed patch-level output...'
+         ifaterr = ifaterr +1
+         call opspec_fatal(reason,'opspec_misc')
+      end if
+
+
+      lu_detailed = btest(idetailed,6) .and. ianth_disturb /= 0
+      if (lu_detailed .and. (n_poi > 1 .or. n_ed_region > 0)) then
+         write(unit=*,fmt='(a)')       '--------------------------------------------------'
+         write(unit=*,fmt='(a,1x,i6)') ' IDETAILED   = ',idetailed
+         write(unit=*,fmt='(a,1x,i6)') ' N_POI       = ',n_poi
+         write(unit=*,fmt='(a,1x,i6)') ' N_ED_REGION = ',n_ed_region
+         write(unit=*,fmt='(a)')       ' '
+         write(unit=*,fmt='(2a)')      ' IDETAILED cannot be 64 or greater when '          &
+                                       ,'running regional simulations.'
+         write(unit=*,fmt='(a)')       '--------------------------------------------------'
+         write (reason,fmt='(2(a,1x))') 'Only single polygon runs are allowed'             &
+                                       ,'with detailed land use table output...'
          ifaterr = ifaterr +1
          call opspec_fatal(reason,'opspec_misc')
       end if

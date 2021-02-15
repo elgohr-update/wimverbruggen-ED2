@@ -5,20 +5,13 @@
 ! the polygon will fall on land or water. The water ones will be removed, so this should   !
 ! be taken into account for the standalone version.                                        !
 !------------------------------------------------------------------------------------------!
-subroutine ed_node_decomp(init,standalone,masterworks)
+subroutine ed_node_decomp(masterworks)
 
    use grid_coms   , only : ngrids            & ! intent(in)
                           , nnxp              & ! intent(in)
                           , nnyp              ! ! intent(in)
    use ed_node_coms, only : mmxp              & ! intent(out)
-                          , mmyp              & ! intent(out)
-                          , mia               & ! intent(in)
-                          , miz               & ! intent(in)
-                          , mja               & ! intent(in)
-                          , mjz               & ! intent(in)
-                          , mi0               & ! intent(in)
-                          , mj0               & ! intent(in)
-                          , mibcon            ! ! intent(in)
+                          , mmyp              ! ! intent(in)
    use ed_para_coms, only : nmachs            ! ! intent(in)
    use mem_polygons, only : n_ed_region       & ! intent(in)
                           , maxsite           ! ! intent(in)
@@ -26,15 +19,11 @@ subroutine ed_node_decomp(init,standalone,masterworks)
                           , work_v            & ! intent(in)
                           , ed_alloc_work     & ! subroutine
                           , ed_nullify_work   ! ! subroutine
-   use soil_coms   , only : isoilflg          ! ! subroutine
    implicit none
    !----- Arguments. ----------------------------------------------------------------------!
-   integer, intent(in) :: init
-   logical, intent(in) :: standalone
    logical, intent(in) :: masterworks
    !----- Local variables. ----------------------------------------------------------------!
    integer             :: ngr
-   integer             :: nsiz
    integer             :: ntotmachs
    !---------------------------------------------------------------------------------------!
 
@@ -68,13 +57,13 @@ subroutine ed_node_decomp(init,standalone,masterworks)
 
    call get_grid()
 
-   do ngr = 1,ngrids!n_ed_region
+   do ngr = 1,n_ed_region
 
       !------------------------------------------------------------------------------------!
       !      Obtain estimates of the fraction of computational time (work) required for    !
       ! each column in the region of the domain.                                           !
       !------------------------------------------------------------------------------------!
-      call get_work(ngr,mmxp(ngr),mmyp(ngr))
+      call get_work(ngr,mmxp(ngr),mmyp(ngr),.false.)
       call ed_parvec_work(ngr,mmxp(ngr),mmyp(ngr))
    end do
 
@@ -87,10 +76,12 @@ subroutine ed_node_decomp(init,standalone,masterworks)
    !---------------------------------------------------------------------------------------!
    do ngr=n_ed_region+1,ngrids
       call ed_newgrid(ngr)
+      call get_work(ngr,mmxp(ngr),mmyp(ngr),.true.)
       work_e(ngr)%work(1,1)=1.
       work_e(ngr)%land(1,1)=.true.
       call ed_parvec_work(ngr,mmxp(ngr),mmyp(ngr))
    end do
+
 
    return
 end subroutine ed_node_decomp
@@ -178,12 +169,15 @@ end subroutine get_grid
 
 !==========================================================================================!
 !==========================================================================================!
-subroutine get_work(ifm,nxp,nyp)
+subroutine get_work(ifm,nxp,nyp,is_poi)
 
    use ed_work_vars, only : work_e         ! ! structure
    use soil_coms   , only : veg_database   & ! intent(in)
                           , soil_database  & ! intent(in)
+                          , soildepth_db   & ! intent(in)
                           , isoilflg       & ! intent(in)
+                          , isoildepthflg  & ! intent(in)
+                          , layer_index    & ! intent(in)
                           , nslcon         & ! intent(in)
                           , isoilcol       ! ! intent(in)
    use mem_polygons, only : n_poi          & ! intent(in)
@@ -197,6 +191,7 @@ subroutine get_work(ifm,nxp,nyp)
    integer, intent(in) :: ifm
    integer, intent(in) :: nxp
    integer, intent(in) :: nyp
+   logical, intent(in) :: is_poi
    !----- Local variables. ----------------------------------------------------------------!
    integer :: npoly
    real   , dimension(:,:), allocatable :: lat_list
@@ -204,9 +199,10 @@ subroutine get_work(ifm,nxp,nyp)
    integer, dimension(:,:), allocatable :: leaf_class_list
    integer, dimension(:,:), allocatable :: ntext_soil_list
    integer, dimension(:,:), allocatable :: ncol_soil_list
+   integer, dimension(:,:), allocatable :: depth_soil_list
    real   , dimension(:,:), allocatable :: ipcent_land
    real   , dimension(:,:), allocatable :: ipcent_soil
-   integer                              :: datsoil
+   real   , dimension(:,:), allocatable :: ipcent_depth
    integer                              :: ipy
    integer                              :: i
    integer                              :: j
@@ -215,6 +211,8 @@ subroutine get_work(ifm,nxp,nyp)
    integer                              :: iloff
    integer                              :: iroff
    integer                              :: itext
+   integer                              :: ilat_bin
+   integer                              :: ilon_bin
    real                                 :: maxwork
    !---------------------------------------------------------------------------------------!
 
@@ -226,8 +224,10 @@ subroutine get_work(ifm,nxp,nyp)
    allocate(leaf_class_list(maxsite,npoly))
    allocate(ntext_soil_list(maxsite,npoly))
    allocate(ncol_soil_list (maxsite,npoly))
+   allocate(depth_soil_list(maxsite,npoly))
    allocate(ipcent_land    (maxsite,npoly))
    allocate(ipcent_soil    (maxsite,npoly))
+   allocate(ipcent_depth   (maxsite,npoly))
    !---------------------------------------------------------------------------------------!
 
 
@@ -346,26 +346,69 @@ subroutine get_work(ifm,nxp,nyp)
       end do
    end if
 
-   !----- Generate the land/sea mask. -----------------------------------------------------!
-!   write(unit=*,fmt=*) ' => Generating the land/sea mask.'
+   !---------------------------------------------------------------------------------------!
+   !     Generate the land/sea mask.  This is only needed in regional runs.  For single    !
+   ! polygons of interest, we assume that the place is in the land.                        !
+   !---------------------------------------------------------------------------------------!
+   write(unit=*,fmt=*) ' => Generating the land/sea mask.'
+   if (is_poi) then
+      ipcent_land    (:,:) = 1.
+      leaf_class_list(:,:) = 6
+   else
+      call leaf_database(trim(veg_database(ifm)),maxsite,npoly,'leaf_class'                &
+                        ,lat_list,lon_list,leaf_class_list,ipcent_land)
+   end if
+   !---------------------------------------------------------------------------------------!
 
-!   call leaf_database(trim(veg_database(ifm)),maxsite,npoly,'leaf_class'                   &
-!                     ,lat_list,lon_list,leaf_class_list,ipcent_land)
 
-!   if (isoilflg(ifm) == 1) then
-!      call leaf_database(trim(soil_database(ifm)),maxsite,npoly,'soil_text'                &
-!                        ,lat_list,lon_list,ntext_soil_list,ipcent_soil)
-!   else
+   !---------------------------------------------------------------------------------------!
+   !     Either read or assign the soil texture from ED2IN.                                !
+   !---------------------------------------------------------------------------------------!
+   if (isoilflg(ifm) == 1) then
+      call leaf_database(trim(soil_database(ifm)),maxsite,npoly,'soil_text'                &
+                        ,lat_list,lon_list,ntext_soil_list,ipcent_soil)
+   else
       !------------------------------------------------------------------------------------!
       !   Allow for only one site by making the first site with the default soil type and  !
       ! area 1., and the others with area 0.                                               !
       !------------------------------------------------------------------------------------!
-!      ntext_soil_list        (:,:) = nslcon
-!      ipcent_soil            (:,:) = 0.
-!      ipcent_soil            (1,:) = 1.
+      ntext_soil_list        (:,:) = nslcon
+      ipcent_soil            (:,:) = 0.
+      ipcent_soil            (1,:) = 1.
       !------------------------------------------------------------------------------------!
-!   end if
+   end if
    !---------------------------------------------------------------------------------------!
+
+
+
+
+   !---------------------------------------------------------------------------------------!
+   !     Either read or assign the soil depth from ED2IN.  Currently only one depth per    !
+   ! polygon is allowed; in the future, we may want to update this to account for both     !
+   ! texture and depth.                                                                    !
+   !---------------------------------------------------------------------------------------!
+   select case (isoildepthflg)
+   case (0,1)
+      !------------------------------------------------------------------------------------!
+      !   Use the default depth (either constant or the ED-1.0 style).                     !
+      !------------------------------------------------------------------------------------!
+      do ipy=1,npoly
+         ilat_bin               = min(180,int(90.0 - lat_list(1,ipy)) + 1)
+         ilon_bin               = int(180.0 + lon_list(1,ipy)) + 1
+         depth_soil_list(:,ipy) = layer_index(ilat_bin,ilon_bin) 
+      end do
+      ipcent_depth(:,:) = 0.
+      ipcent_depth(1,:) = 1.
+      !------------------------------------------------------------------------------------!
+   case (2)
+      !----- Soil depth is provided in HDF5 format. ---------------------------------------!
+      call leaf_database(trim(soildepth_db),maxsite,npoly,'soil_depth'                     &
+                        ,lat_list,lon_list,depth_soil_list,ipcent_depth)
+      !------------------------------------------------------------------------------------!
+   end select
+   !---------------------------------------------------------------------------------------!
+
+
 
 
    !---------------------------------------------------------------------------------------!
@@ -396,7 +439,8 @@ subroutine get_work(ifm,nxp,nyp)
                work_e(ifm)%soilfrac(itext,i,j) = ipcent_soil(itext,ipy)
                work_e(ifm)%ntext   (itext,i,j) = ntext_soil_list (itext,ipy)
             end do
-            work_e(ifm)%nscol            (i,j) = ncol_soil_list(1,ipy)
+            work_e(ifm)%lsl              (i,j) = depth_soil_list(1,ipy)
+            work_e(ifm)%nscol            (i,j) = ncol_soil_list (1,ipy)
 
             maxwork = max(maxwork,work_e(ifm)%work(i,j))
 
@@ -404,6 +448,7 @@ subroutine get_work(ifm,nxp,nyp)
             !----- Making this grid point 100% water --------------------------------------!
             work_e(ifm)%landfrac  (i,j) = 0.
             work_e(ifm)%work      (i,j) = epsilon(0.0)
+            work_e(ifm)%lsl       (i,j) = 0
             work_e(ifm)%nscol     (i,j) = 0
             work_e(ifm)%ntext   (:,i,j) = 0
             work_e(ifm)%soilfrac(:,i,j) = 0.
@@ -429,8 +474,10 @@ subroutine get_work(ifm,nxp,nyp)
    deallocate(leaf_class_list)
    deallocate(ntext_soil_list)
    deallocate(ncol_soil_list )
+   deallocate(depth_soil_list)
    deallocate(ipcent_land    )
    deallocate(ipcent_soil    )
+   deallocate(ipcent_depth   )
    !---------------------------------------------------------------------------------------!
 
    return
@@ -452,8 +499,7 @@ subroutine ed_parvec_work(ifm,nxp,nyp)
                            , npolys_run          & ! intent(out)
                            , ed_alloc_work_vec   & ! subroutine
                            , ed_nullify_work_vec ! ! subroutine
-   use soil_coms    , only : nslcon              & ! intent(in)
-                           , ed_nstyp            ! ! intent(in)
+   use soil_coms    , only : ed_nstyp            ! ! intent(in)
    use mem_polygons , only : maxsite             ! ! intent(in)
    implicit none
    !----- Arguments. ----------------------------------------------------------------------!
@@ -505,6 +551,7 @@ subroutine ed_parvec_work(ifm,nxp,nyp)
             work_v(ifm)%work    (poly) = work_e(ifm)%work(i,j)
             work_v(ifm)%xid     (poly) = i
             work_v(ifm)%yid     (poly) = j
+            work_v(ifm)%lsl     (poly) = work_e(ifm)%lsl  (i,j)
             work_v(ifm)%nscol   (poly) = work_e(ifm)%nscol(i,j)
 
             do itext=1,maxsite
@@ -532,50 +579,39 @@ end subroutine ed_parvec_work
 ! and use this information to fill the local work array.                                   !
 !------------------------------------------------------------------------------------------!
 subroutine ed_load_work_from_history()
-   use ed_max_dims , only : str_len             & ! intent(in)
-                          , maxfiles            & ! intent(in)
-                          , maxlist             & ! intent(in)
-                          , huge_polygon        ! ! intent(in)
-   use ed_misc_coms, only : runtype             & ! intent(in)
-                          , ied_init_mode       & ! intent(in)
-                          , sfilin              & ! intent(in)
-                          , current_time        ! ! intent(in)
-   use grid_coms   , only : ngrids              ! ! intent(in)
-   use ed_work_vars, only : work_v              & ! intent(inout)
-                          , ed_alloc_work_vec   & ! subroutine
-                          , ed_nullify_work_vec & ! subroutine
-                          , npolys_run          ! ! intent(out)
-   use mem_polygons, only : n_ed_region         ! ! intent(in)
-   use hdf5_coms   , only : file_id             & ! intent(inout)
-                          , dset_id             & ! intent(inout)
-                          , dspace_id           & ! intent(inout)
-                          , plist_id            & ! intent(inout)
-                          , globdims            & ! intent(inout)
-                          , chnkdims            & ! intent(inout)
-                          , chnkoffs            & ! intent(inout)
-                          , cnt                 & ! intent(inout)
-                          , stride              & ! intent(inout)
-                          , memdims             & ! intent(inout)
-                          , memoffs             & ! intent(inout)
-                          , memsize             & ! intent(inout)
-                          , datatype_id         ! ! intent(inout)
-! $OMP use omp_lib
+   use ed_max_dims    , only : str_len             & ! intent(in)
+                             , maxfiles            & ! intent(in)
+                             , maxlist             & ! intent(in)
+                             , huge_polygon        ! ! intent(in)
+   use ed_misc_coms   , only : runtype             & ! intent(in)
+                             , ied_init_mode       & ! intent(in)
+                             , sfilin              & ! intent(in)
+                             , current_time        ! ! intent(in)
+   use ed_work_vars   , only : work_v              & ! intent(inout)
+                             , ed_alloc_work_vec   & ! subroutine
+                             , ed_nullify_work_vec & ! subroutine
+                             , npolys_run          ! ! intent(out)
+   use mem_polygons   , only : n_ed_region         ! ! intent(in)
+   use hdf5_coms      , only : file_id             & ! intent(inout)
+                             , dset_id             & ! intent(inout)
+                             , dspace_id           & ! intent(inout)
+                             , globdims            & ! intent(inout)
+                             , chnkdims            & ! intent(inout)
+                             , chnkoffs            & ! intent(inout)
+                             , memdims             & ! intent(inout)
+                             , memoffs             & ! intent(inout)
+                             , memsize             ! ! intent(inout)
+   use ed_init_history, only : hdf_getslab_r       ! ! sub-routine
 
-#if USE_HDF5
    use hdf5
-#endif
 
    implicit none
-
-#if USE_HDF5
 
    !----- Local variables. ----------------------------------------------------------------!
    character(len=str_len), dimension(maxlist)               :: full_list
    character(len=str_len), dimension(maxfiles)              :: histo_list
    character(len=str_len)                                   :: hnamel
    character(len=3)                                         :: cgr
-   integer, dimension(:)                      , allocatable :: pclosest
-   integer, dimension(:)                      , allocatable :: psrcfile
    integer                                                  :: hdferr
    integer                                                  :: npolys_histo
    integer                                                  :: nflist
@@ -584,7 +620,6 @@ subroutine ed_load_work_from_history()
    integer                                                  :: ifm
    integer                                                  :: ipr
    integer                                                  :: iph
-   integer                                                  :: inn
    integer                                                  :: dsetrank
    integer                                                  :: ipya
    integer                                                  :: ipyz
@@ -852,11 +887,6 @@ subroutine ed_load_work_from_history()
 
    !----- Close the HDF environment. ------------------------------------------------------!
    call h5close_f(hdferr)
-#else
-
-   call fatal_error('ED2 now requires HDF5...','ed_load_work_from_history'                 &
-                   ,'ed_para_init.F90')
-#endif
 
    write (unit=*,fmt='(a)') '-------------------------------------------------------------'
    write (unit=*,fmt='(a)') ' '

@@ -5,7 +5,7 @@ subroutine read_events_xml(filename,success)
   implicit none
   character*(*),intent(in) :: filename
   logical                  :: iamhere
-  logical, intent(out)     :: success 
+  logical, intent(out)     :: success
   integer                  :: nevent
   success = .false.
 
@@ -18,8 +18,8 @@ subroutine read_events_xml(filename,success)
         success = .true.
 
         call libxml2f90__ll_selectlist('EVENTS')
-        call libxml2f90__ll_selecttag('ACT','eventlist',1) !select upper level tag  
-        call libxml2f90__ll_exist('DOWN','event',nevent)  
+        call libxml2f90__ll_selecttag('ACT','eventlist',1) !select upper level tag
+        call libxml2f90__ll_exist('DOWN','event',nevent)
         print*,"NUMBER OF EVENTS FOUND", nevent
 
      end if
@@ -29,7 +29,7 @@ end subroutine read_events_xml
 
 
 subroutine prescribed_event(year,doy)
-  use ed_misc_coms, only: event_file 
+  use ed_misc_coms, only: event_file
   implicit none
 
   integer, intent(in) :: year
@@ -42,7 +42,7 @@ subroutine prescribed_event(year,doy)
   integer(kind=4),dimension(20) ::pft
   real(kind=8),dimension(20):: rval
   logical(kind=4) :: texist = .false.
-  
+
 
 
   if (event_file /= '') then
@@ -54,9 +54,9 @@ subroutine prescribed_event(year,doy)
         if(first) then !! if read was successful
 
            !! access list and find next event
-           call libxml2f90__ll_selectlist('EVENTS')  
+           call libxml2f90__ll_selectlist('EVENTS')
            call libxml2f90__ll_selecttag('ACT','eventlist',1) !select upper level tag
-           call libxml2f90__ll_exist('DOWN','event',nevent)           
+           call libxml2f90__ll_exist('DOWN','event',nevent)
            print*,"NUMBER OF EVENTS FOUND", nevent
            if(nevent .ge. 1) then
               do i=1,nevent
@@ -75,7 +75,7 @@ subroutine prescribed_event(year,doy)
               enddo
               print*,"FIRST EVENT",next_doy,next_year
            end if
-              
+
         endif
 
         first = .false.
@@ -84,10 +84,10 @@ subroutine prescribed_event(year,doy)
      if(next_year == year .and. next_doy == doy) then
 
         !! access list and find todays events
-        call libxml2f90__ll_selectlist('EVENTS')  
+        call libxml2f90__ll_selectlist('EVENTS')
         call libxml2f90__ll_selecttag('ACT','eventlist',1) !select upper level tag
         call libxml2f90__ll_exist('DOWN','event',nevent)
- 
+
 !        print*,"EVENT",nevent
         findevent: do i=1,nevent !! Find Event in list
            call libxml2f90__ll_selecttag('DOWN','event',i) !select event
@@ -97,15 +97,15 @@ subroutine prescribed_event(year,doy)
            !! see if the event bumps the closest event
            if((curr_year == year .and. curr_doy == doy)) then
               print*,"EVENT",i,"of",nevent
-              
+
               !!! PROCESS AGRICULTURAL EVENTS
 
               !!! HARVESTING
               call libxml2f90__ll_exist('DOWN','harvest',nrep)
               if(nrep .gt. 0) then
-                 print*,"HARVEST FESTIVAL"                 
+                 print*,"HARVEST FESTIVAL"
                  ! agb_frac
-                 ! bgb_frac 
+                 ! bgb_frac
                  do j = 1,nrep
                     call libxml2f90__ll_selecttag('DOWN','harvest',j)
                     !! Above-ground coarse biomass fraction removed
@@ -122,7 +122,7 @@ subroutine prescribed_event(year,doy)
                     if(.not.texist) rval(4) = 1.0d+0
 
                     call event_harvest(rval(1),rval(2),rval(3),rval(4))
-                    
+
                     call libxml2f90__ll_selecttag('UP','event',i)
                  end do
               end if
@@ -150,7 +150,7 @@ subroutine prescribed_event(year,doy)
                     if(.not.texist) rval(5) = 0.0d+0
 
                     call event_fertilize(rval(1:5))
-                 
+
                     call libxml2f90__ll_selecttag('UP','event',i)
                  end do
               endif
@@ -164,11 +164,11 @@ subroutine prescribed_event(year,doy)
 
                     call getConfigREAL  ('depth','till',j,rval(1),texist)
                     if(.not.texist) rval(1) = 0.15d+0 !assume a default of 15cm
-                    
+
                     call event_till(rval(1))
 
                     call libxml2f90__ll_selecttag('UP','event',i)
-   
+
                  enddo
               end if
 
@@ -176,18 +176,18 @@ subroutine prescribed_event(year,doy)
               if(nrep .gt. 0) then
                  print*,"IRRIGATE"
                  do j = 1,nrep
-                    
+
                     call getConfigREAL ('irrigate','event',j,rval(1),texist)
                     if(.not.texist) rval(1) = 0.0d+0
-                    
+
                     call event_irrigate(rval(1))
-                   
+
                  enddo
               endif
 
               call libxml2f90__ll_exist('DOWN','pesticide',nrep)
               if(nrep .gt. 0) print*,"PESTICIDE"
-              
+
               call libxml2f90__ll_exist('DOWN','herbicide',nrep)
               if(nrep .gt. 0) print*,"HERBICIDE"
               !pft !! spp removed
@@ -203,7 +203,7 @@ subroutine prescribed_event(year,doy)
               call libxml2f90__ll_exist('DOWN','thin',nrep)
               if(nrep .gt. 0) print*,"There's too many trees around here"
               !pft, default = all
-              
+
               !!! PROCESS NATURAL DISTURBANCES
               call libxml2f90__ll_exist('DOWN','wind',nrep)
               if(nrep .gt. 0) print*,"If the wind blows, your gone"
@@ -217,7 +217,7 @@ subroutine prescribed_event(year,doy)
                     call libxml2f90__ll_selecttag('DOWN','fire',j)
 
                     call event_fire()
-                    
+
                     call libxml2f90__ll_selecttag('UP','event',i)
                  end do
               end if
@@ -229,7 +229,7 @@ subroutine prescribed_event(year,doy)
               if(nrep .gt. 0) print*,"introduced species"
 
               !! PLANTING (assumed to occur AFTER the other events)
-              call libxml2f90__ll_exist('DOWN','plant',nrep) 
+              call libxml2f90__ll_exist('DOWN','plant',nrep)
               if(nrep .gt. 0) then
                  do j = 1,nrep
                     call libxml2f90__ll_selecttag('DOWN','plant',j)
@@ -242,13 +242,13 @@ subroutine prescribed_event(year,doy)
                     call getConfigREAL   ('density','plant',j,rval(1),texist)
                     if(.not.texist) rval(1) = 1.0d+0
                     call event_planting(pft(1),rval(1))
-                    
+
                     call libxml2f90__ll_selecttag('UP','event',i)
                  end do
               end if
 
 
-              
+
               call libxml2f90__ll_selecttag('UP','eventlist',1) !move back up to top level
               exit findevent
            endif
@@ -263,7 +263,7 @@ subroutine prescribed_event(year,doy)
            call libxml2f90__ll_selecttag('DOWN','event',i) !select event
            call getConfigINT   ('year','event',i,curr_year,texist)
            call getConfigINT   ('doy','event',i,curr_doy,texist)
-           
+
            !! see if the event bumps the closest event
            if((curr_year == year .and. curr_doy .gt. doy) .or. (curr_year .gt. year)) then
               if((curr_year .lt. next_year) .or. (curr_year == next_year .and. curr_doy .lt. next_doy)) then
@@ -283,32 +283,41 @@ end subroutine prescribed_event
 
 
 subroutine event_harvest(agb_frac8,bgb_frac8,fol_frac8,stor_frac8)
-  use grid_coms, only : ngrids,nzg
+  use stable_cohorts, only : is_resolvable
+  use update_derived_utils, only : update_patch_derived_props, update_site_derived_props
+  use grid_coms, only : ngrids
   use ed_state_vars,only: edgrid_g, &
        edtype,polygontype,sitetype, &
        patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype 
-  use pft_coms, only:sla,qsw,q,hgt_min, agf_bs, is_grass
-  use disturbance_utils,only: plant_patch
+  use met_driver_coms, only : met_driv_state             ! ! structure
+  use pft_coms, only:qsw,qbark,q,hgt_min, agf_bs, is_grass
   use ed_therm_lib, only: calc_veg_hcap,update_veg_energy_cweh
   use fuse_fiss_utils, only: terminate_cohorts
-  use allometry, only : bd2dbh, dbh2h, bl2dbh, bl2h, h2dbh, area_indices, ed_biomass
+  use allometry, only : bd2dbh, dbh2h, bl2dbh, bl2h, h2dbh, area_indices &
+                      , ed_biomass,size2bt,size2xb,ed_balive
   use consts_coms, only : pio4
-  use ed_misc_coms     , only : igrass               ! ! intent(in)
-  use budget_utils     , only : update_budget
+  use ed_misc_coms     , only : igrass,frqsumi               ! ! intent(in)
+  use plant_hydro,     only : rwc2tw,twi2twe                   ! ! sub-routine
   implicit none
   real(kind=8),intent(in) :: agb_frac8
   real(kind=8),intent(in) :: bgb_frac8
   real(kind=8),intent(in) :: fol_frac8
   real(kind=8),intent(in) :: stor_frac8
-  real :: ialloc,bdead_new,bswa_new,bswb_new,bleaf_new,bfr_new,bstore_new
+  real :: ialloc,bdeada_new,bdeadb_new,bsapa_new,bsapb_new,bbarka_new,bbarkb_new
+  real :: bleaf_new,bfr_new,bstore_new
   real :: agb_frac,bgb_frac,fol_frac,stor_frac
   real :: old_leaf_hcap
   real :: old_wood_hcap
+  real :: old_leaf_water
+  real :: old_wood_water
+  real :: old_leaf_water_im2
+  real :: old_wood_water_im2
   real :: elim_nplant
   real :: elim_lai
   integer :: ifm,ipy,isi,ipa,ico,pft
   type(edtype), pointer :: cgrid
   type(polygontype), pointer :: cpoly
+  type(met_driv_state), pointer :: cmet
   type(sitetype),pointer :: csite
   type(patchtype),pointer :: cpatch
 
@@ -330,53 +339,80 @@ subroutine event_harvest(agb_frac8,bgb_frac8,fol_frac8,stor_frac8)
   print*,agb_frac,bgb_frac,fol_frac
 
   do ifm = 1,ngrids
-     cgrid => edgrid_g(ifm) 
+     cgrid => edgrid_g(ifm)
      do ipy = 1,cgrid%npolygons
-        
+
         cpoly => cgrid%polygon(ipy)
-        
+
         do isi = 1,cpoly%nsites
-           
+
            csite => cpoly%site(isi)
+           cmet  => cpoly%met(isi)
 
            do ipa=1,csite%npatches
-              
+
               cpatch => csite%patch(ipa)
 
               if(cpatch%ncohorts > 0) then
 
               do ico=1,cpatch%ncohorts
-                 
-                 pft = cpatch%pft(ico)                 
+
+                 pft = cpatch%pft(ico)
                  !! calc new pool sizes
 
-                 ialloc     =  1.0 / (1.0 + q(pft) + qsw(pft) * cpatch%hite(ico))
-                 bdead_new  = cpatch%bdead(ico) *                                        &
-                              (1.0-agb_frac * agf_bs(pft) - bgb_frac*(1.0-agf_bs(pft)))
-                 bswa_new   = cpatch%balive(ico) * qsw(pft) * cpatch%hite(ico)           &
-                              * agf_bs(pft) * ialloc * (1.0-agb_frac*agf_bs(pft)         &
-                              - bgb_frac*(1.0-agf_bs(pft)))
-                 bswb_new   = cpatch%balive(ico) * qsw(pft) * cpatch%hite(ico)           &
-                              * (1.-agf_bs(pft)) * ialloc                                &
-                              * (1.0-agb_frac*agf_bs(pft) - bgb_frac*(1.0-agf_bs(pft)))
+                 ialloc     =  1.0 / (1.0 + q(pft) + (qsw(pft)+qbark(pft))*cpatch%hite(ico))
+                 bdeada_new = cpatch%bdeada(ico) * ( 1.0 - agb_frac)
+                 bdeada_new = max(0.0, bdeada_new)
+                 bdeadb_new = cpatch%bdeadb(ico) * ( 1.0 - bgb_frac)
+                 bdeadb_new = max(0.0, bdeadb_new)
+                 bsapa_new  = cpatch%balive(ico) * qsw(pft) * cpatch%hite(ico) * ialloc    &
+                            * agf_bs(pft) * (1.0-agb_frac)
+                 bsapa_new = max(0.0, bsapa_new)
+                 bsapb_new  = cpatch%balive(ico) * qsw(pft) * cpatch%hite(ico) * ialloc    &
+                            * (1.0 - agf_bs(pft)) * (1.0-bgb_frac)
+                 bsapb_new = max(0.0, bsapb_new)
+                 bbarka_new = cpatch%balive(ico) * qbark(pft) * cpatch%hite(ico) * ialloc  &
+                            * agf_bs(pft) * (1.0-agb_frac)
+                 bbarka_new = max(0.0, bbarka_new)
+                 bbarkb_new = cpatch%balive(ico) * qbark(pft) * cpatch%hite(ico) * ialloc  &
+                            * (1.0 - agf_bs(pft)) * (1.0-bgb_frac)
+                 bbarkb_new = max(0.0, bbarkb_new)
 
                  bstore_new = cpatch%bstorage(ico) * (1.0-stor_frac)
+                 bstore_new = max(0.0, bstore_new)
                  bleaf_new  = cpatch%balive(ico)   * ialloc *(1.0-fol_frac)
                  bfr_new    = cpatch%balive(ico)   * q(pft) * ialloc * (1.0-bgb_frac)
+                 bfr_new    = max(0.0, bfr_new)
 
                  !! move residual frac to debris/litter pools
                    !! For now assume 100% removal [[needs to be updated]]
-                 
 
-                 !! update biomass pools  
-                 !! [[this needs to be more sophisticated]] 
-                 
-                 cpatch%balive(ico)    = max(0.0,bleaf_new + bfr_new + bswa_new + bswb_new)
-                 cpatch%broot(ico)     = max(0.0,bfr_new)
-                 cpatch%bsapwooda(ico) = max(0.0,bswa_new)
-                 cpatch%bsapwoodb(ico) = max(0.0,bswb_new)
-                 cpatch%bdead(ico)     = max(0.0,bdead_new)
-                 cpatch%bstorage(ico)  = max(0.0,bstore_new)
+                 !! Adjust C balance to reflect new values
+                 !! See https://github.com/EDmodel/ED2/issues/300
+                 csite%cbudget_loss2yield(ipa) = csite%cbudget_loss2yield(ipa) &
+                      + frqsumi * cpatch%nplant(ico) * &
+                      ( (cpatch%broot(ico) - bfr_new) &
+                      + (cpatch%bsapwooda(ico) - bsapa_new) &
+                      + (cpatch%bsapwoodb(ico) - bsapb_new) &
+                      + (cpatch%bbarka(ico) - bbarka_new)  &
+                      + (cpatch%bbarkb(ico) - bbarkb_new) &
+                      + (cpatch%bdeada(ico) - bdeada_new) &
+                      + (cpatch%bdeadb(ico) - bdeadb_new)   &
+                      + (cpatch%bstorage(ico) - bstore_new) )
+
+                 !! update biomass pools
+                 !! [[this needs to be more sophisticated]]
+
+                 cpatch%broot(ico)     = bfr_new
+                 cpatch%bsapwooda(ico) = bsapa_new
+                 cpatch%bsapwoodb(ico) = bsapb_new
+                 cpatch%bbarka(ico)    = bbarka_new
+                 cpatch%bbarkb(ico)    = bbarkb_new
+                 cpatch%bdeada(ico)    = bdeada_new
+                 cpatch%bdeadb(ico)    = bdeadb_new
+                 cpatch%bstorage(ico)  = bstore_new
+
+                 cpatch%balive(ico)    = ed_balive(cpatch,ico)
                  
                  if(bleaf_new .le. tiny(1.0)) then
                     cpatch%phenology_status(ico) = -2
@@ -385,61 +421,81 @@ subroutine event_harvest(agb_frac8,bgb_frac8,fol_frac8,stor_frac8)
                     cpatch%bleaf(ico)      = 0.0
                  else
                     cpatch%phenology_status(ico) = 1
+                    !! Again, adjust C balance accordingly.
+                    csite%cbudget_loss2yield(ipa) = csite%cbudget_loss2yield(ipa) &
+                         + (cpatch%bleaf(ico) - bleaf_new) * cpatch%nplant(ico) * frqsumi
                     cpatch%bleaf(ico)   = bleaf_new
                  end if
 
-                 if(cpatch%bdead(ico) .gt. tiny(1.0)) then
-                    if(is_grass(cpatch%pft(ico)) .and. igrass==1) then 
-                       cpatch%hite(ico) = max( hgt_min(pft), bl2h(cpatch%bleaf(ico),pft))
+                 if((cpatch%bdeada(ico) + cpatch%bdeadb(ico)) > tiny(1.0)) then
+                    if(is_grass(cpatch%pft(ico)) .and. igrass==1) then
+                       cpatch%hite(ico) = max( hgt_min(pft),                               &
+                                               bl2h(cpatch%bleaf(ico),cpatch%sla(ico),pft))
                        cpatch%dbh (ico) = h2dbh(cpatch%hite(ico),pft)
                     else
-                       cpatch%dbh (ico) = bd2dbh(cpatch%pft(ico), cpatch%bdead(ico)) 
+                       cpatch%dbh (ico) = bd2dbh(cpatch%pft(ico), cpatch%bdeada(ico)       &
+                                                ,cpatch%bdeadb(ico))
                        cpatch%hite(ico) = dbh2h (cpatch%pft(ico), cpatch%dbh(ico))
                     end if
                  else
                     cpatch%dbh(ico)  = 0.0
                     cpatch%hite(ico) = 0.0
                  end if
-                 
+
                  !----- Update LAI, WAI, and CAI ------------------------------------------!
-                 call area_indices(cpatch%nplant(ico),cpatch%bleaf(ico),cpatch%bdead(ico)  &
-                                  ,cpatch%balive(ico),cpatch%dbh(ico), cpatch%hite(ico)    &
-                                  ,cpatch%pft(ico),cpatch%sla(ico), cpatch%lai(ico)        &
-                                  ,cpatch%wai(ico), cpatch%crown_area(ico)                 &
-                                  ,cpatch%bsapwooda(ico))
+                 call area_indices(cpatch, ico)
 
                  !----- Update basal area and above-ground biomass. -----------------------!
-                 cpatch%basarea(ico) = pio4 * cpatch%dbh(ico) * cpatch%dbh(ico)            
-                 cpatch%agb(ico)     = ed_biomass(cpatch%bdead(ico),cpatch%bleaf(ico)      &
-                                                 ,cpatch%bsapwooda(ico),cpatch%pft(ico))   
+                 cpatch%basarea(ico) = pio4 * cpatch%dbh(ico) * cpatch%dbh(ico)
+                 cpatch%btimber(ico) = size2bt(cpatch%dbh(ico),cpatch%hite(ico)            &
+                                              ,cpatch%bdeada(ico),cpatch%bsapwooda(ico)    &
+                                              ,cpatch%bbarka(ico),cpatch%pft(ico))
+                 cpatch%thbark (ico) = size2xb(cpatch%dbh(ico),cpatch%hite(ico)            &
+                                              ,cpatch%bbarka(ico),cpatch%bbarkb(ico)       &
+                                              ,cpatch%sla(ico),cpatch%pft(ico))
+                 cpatch%agb(ico)     = ed_biomass(cpatch, ico)
                  !-------------------------------------------------------------------------!
                  !    Here we are leaving all water in the branches and twigs... Do not    !
                  ! worry, if there is any, it will go down through shedding the next       !
                  ! step.                                                                   !
                  !-------------------------------------------------------------------------!
-                 old_leaf_hcap = cpatch%leaf_hcap(ico)
-                 old_wood_hcap = cpatch%wood_hcap(ico)
-                 call calc_veg_hcap(cpatch%bleaf(ico),cpatch%bdead(ico)                    &
-                                   ,cpatch%bsapwooda(ico),cpatch%nplant(ico)               &
-                                   ,cpatch%pft(ico)                                        &
+                 old_leaf_hcap      = cpatch%leaf_hcap     (ico)
+                 old_wood_hcap      = cpatch%wood_hcap     (ico)
+                 old_leaf_water     = cpatch%leaf_water    (ico)
+                 old_wood_water     = cpatch%wood_water    (ico)
+                 old_leaf_water_im2 = cpatch%leaf_water_im2(ico)
+                 old_wood_water_im2 = cpatch%wood_water_im2(ico)
+                 call calc_veg_hcap(cpatch%bleaf(ico),cpatch%bdeada(ico)                   &
+                                   ,cpatch%bsapwooda(ico),cpatch%bbarka(ico)               &
+                                   ,cpatch%nplant(ico),cpatch%pft(ico)                     &
                                    ,cpatch%leaf_hcap(ico),cpatch%wood_hcap(ico))
-                 call update_veg_energy_cweh(csite,ipa,ico,old_leaf_hcap,old_wood_hcap)
+                 call rwc2tw(cpatch%leaf_rwc(ico),cpatch%wood_rwc(ico),cpatch%bleaf(ico)   &
+                            ,cpatch%bsapwooda(ico),cpatch%bsapwoodb(ico)                   &
+                            ,cpatch%bdeada(ico),cpatch%bdeadb(ico),cpatch%broot(ico)       &
+                            ,cpatch%dbh(ico),cpatch%pft(ico),cpatch%leaf_water_int(ico)    &
+                            ,cpatch%wood_water_int(ico))
+                 call twi2twe(cpatch%leaf_water_int(ico),cpatch%wood_water_int(ico)        &
+                             ,cpatch%nplant(ico),cpatch%leaf_water_im2(ico)                &
+                             ,cpatch%wood_water_im2(ico))
+                 call update_veg_energy_cweh(csite,ipa,ico,old_leaf_hcap,old_wood_hcap     &
+                                            ,old_leaf_water,old_wood_water                 &
+                                            ,old_leaf_water_im2,old_wood_water_im2         &
+                                            ,.true.,.false.)
 
                  !----- Update flags telling whether leaves and branches can be solved. ---!
-                 call is_resolvable(csite,ipa,ico)
+                 call is_resolvable(csite,ipa,ico,.false.,.false.,'event_harvest')
 
               enddo
-             
-              !! remove small cohorts
-              call terminate_cohorts(csite,ipa,elim_nplant,elim_lai)
 
-              call update_patch_derived_props(csite,ipa)
-              call update_budget(csite, cpoly%lsl(isi),ipa,ipa)
-           end if  !! check to make sure there ARE cohorts
+              !! remove small cohorts
+              call terminate_cohorts(csite,ipa,cmet,.false.,elim_nplant,elim_lai)
+
+              call update_patch_derived_props(csite,ipa,.true.)
+            end if  !! check to make sure there ARE cohorts
 
            enddo
            ! Update site properties. ## THINK ABOUT WHAT TO SET FLAG##########
-           call update_site_derived_props(cpoly,0,isi)           
+           call update_site_derived_props(cpoly,0,isi)
         end do
      end do
 
@@ -451,14 +507,17 @@ end subroutine event_harvest
 
 
 subroutine event_planting(pft,density8)
+  use rk4_integ_utils, only : initialize_rk4patches
+  use update_derived_utils, only : update_patch_thermo_props  &
+                                 , update_patch_derived_props &
+                                 , update_site_derived_props
   use grid_coms, only : ngrids,nzg,nzs
   use ed_state_vars,only: edgrid_g, &
        edtype,polygontype,sitetype, &
        patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype, &
-       filltab_alltypes 
-  use pft_coms, only:sla,qsw,q,hgt_min
-  use disturbance_utils,only: plant_patch
-  use budget_utils     , only : update_budget
+       filltab_alltypes
+  use disturbance      , only : plant_patch
+  use ed_type_init     , only : new_patch_sfc_props
   implicit none
   integer(kind=4),intent(in) :: pft
   real(kind=8),intent(in) :: density8
@@ -484,27 +543,26 @@ subroutine event_planting(pft,density8)
   print*,pft,density
 
   do ifm = 1,ngrids
-     cgrid => edgrid_g(ifm) 
+     cgrid => edgrid_g(ifm)
      do ipy = 1,cgrid%npolygons
-        
+
         cpoly => cgrid%polygon(ipy)
-        
+
         do isi = 1,cpoly%nsites
-           
+
            csite => cpoly%site(isi)
 
            do ipa=1,csite%npatches
               call update_patch_thermo_props(csite,ipa,ipa,nzg,nzs,cpoly%ntext_soil(:,isi))
               call plant_patch(csite,ipa,nzg,pft,density,cpoly%ntext_soil(:,isi) &
-                              ,cpoly%green_leaf_factor(:,isi),planting_ht,cpoly%lsl(isi))
-              call update_patch_derived_props(csite,ipa)
+                              ,planting_ht,cpoly%lsl(isi))
+              call update_patch_derived_props(csite,ipa,.true.)
               call new_patch_sfc_props(csite, ipa,nzg,nzs,cpoly%ntext_soil(:,isi))
-              call update_budget(csite, cpoly%lsl(isi),ipa,ipa)
 
            enddo
 
            ! Update site properties. ## THINK ABOUT WHAT TO SET FLAG##########
-           call update_site_derived_props(cpoly,1,isi)           
+           call update_site_derived_props(cpoly,1,isi)
 
         enddo
 
@@ -520,13 +578,11 @@ subroutine event_planting(pft,density8)
 end subroutine event_planting
 
 subroutine event_fertilize(rval8)
-  use grid_coms, only : ngrids, nzg
+  use update_derived_utils, only : update_patch_derived_props, update_site_derived_props
+  use grid_coms, only : ngrids
   use ed_state_vars,only: edgrid_g, &
        edtype,polygontype,sitetype, &
-       patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype 
-  use pft_coms, only:sla,qsw,q,hgt_min, agf_bs
-  use disturbance_utils,only: plant_patch
-  use budget_utils     , only : update_budget
+       patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype
   real(kind=8),intent(in),dimension(5) :: rval8
 
   real :: nh4,no3,p,k,ca
@@ -555,28 +611,27 @@ subroutine event_fertilize(rval8)
   print*,rval8
 
   do ifm = 1,ngrids
-     cgrid => edgrid_g(ifm) 
+     cgrid => edgrid_g(ifm)
      do ipy = 1,cgrid%npolygons
-        
+
         cpoly => cgrid%polygon(ipy)
-        
+
         do isi = 1,cpoly%nsites
-           
+
            csite => cpoly%site(isi)
 
            do ipa=1,csite%npatches
-              
+
               cpatch => csite%patch(ipa)
 
               csite%mineralized_soil_N(ipa) = max(0.0,csite%mineralized_soil_N(ipa) + nh4 + no3)
-             
+
               !! update patch properties
-              call update_patch_derived_props(csite,ipa)
-              call update_budget(csite, cpoly%lsl(isi),ipa,ipa)
+              call update_patch_derived_props(csite,ipa,.true.)
            enddo
 
            ! Update site properties. ## THINK ABOUT WHAT TO SET FLAG##########
-           call update_site_derived_props(cpoly,0,isi)           
+           call update_site_derived_props(cpoly,0,isi)
         end do
      end do
 
@@ -590,7 +645,7 @@ subroutine event_irrigate(rval8)
        edtype,polygontype,sitetype, &
        patchtype
   use therm_lib, only: uint2tl,tl2uint
-  use consts_coms, only : wdns,wdnsi,t00
+  use consts_coms, only : wdns,wdnsi,t3ple
   implicit none
   real(kind=8),intent(in) :: rval8
 
@@ -601,7 +656,7 @@ subroutine event_irrigate(rval8)
   type(sitetype),pointer :: csite
   type(patchtype),pointer :: cpatch
 
-  iwater = real(rval8)     
+  iwater = real(rval8)
 
   print*,"----------------------------"
   print*,"----------------------------"
@@ -621,21 +676,23 @@ subroutine event_irrigate(rval8)
   end if
 
   do ifm = 1,ngrids
-     cgrid => edgrid_g(ifm) 
+     cgrid => edgrid_g(ifm)
      do ipy = 1,cgrid%npolygons
-        
+
         cpoly => cgrid%polygon(ipy)
-        
+
         do isi = 1,cpoly%nsites
-           
+
            csite => cpoly%site(isi)
 
            do ipa=1,csite%npatches
-              
+
               cpatch => csite%patch(ipa)
 
               !! note, assume irrigation water is at same temperature as soil
-              if(csite%soil_tempk(nzg,ipa) > t00)then
+              if (csite%soil_tempk(nzg,ipa) == t3ple)then
+                 fliq = 0.5
+              elseif (csite%soil_tempk(nzg,ipa) > t3ple)then
                  fliq = 1.0
               else
                  fliq = 0.0
@@ -688,25 +745,28 @@ subroutine event_fire()
 end subroutine event_fire
 
 subroutine event_till(rval8)
+  use update_derived_utils, only : update_patch_derived_props, update_site_derived_props
   use grid_coms, only : ngrids
   use ed_state_vars,only: edgrid_g, &
        edtype,polygontype,sitetype, &
-       patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype 
-  use pft_coms, only: c2n_structural, c2n_slow, c2n_storage,c2n_leaf,c2n_stem,l2n_stem
-  use decomp_coms, only: f_labile
+       patchtype,allocate_patchtype,copy_patchtype,deallocate_patchtype
+  use met_driver_coms, only : met_driv_state             ! ! structure
+  use pft_coms, only: c2n_storage,c2n_leaf,c2n_stem,l2n_stem,f_labile_leaf,f_labile_stem,agf_bs
   use fuse_fiss_utils, only: terminate_cohorts
   use ed_therm_lib, only : calc_veg_hcap
-  use budget_utils     , only : update_budget
   use therm_lib        , only : cmtl2uext
+  use plant_hydro,     only : rwc2tw, twi2twe       ! ! sub-routine
+  use consts_coms,     only : t3ple ! ! intent(in)
   implicit none
   real(kind=8),intent(in) :: rval8
 
   real :: depth
   integer :: ifm,ipy,isi,ipa,pft,ico
-  real :: elim_nplant,elim_lai
+  real :: elim_nplant,elim_lai,a_bfast,b_bfast,a_bstruct,b_bstruct,a_bstorage,b_bstorage
   type(edtype), pointer :: cgrid
   type(polygontype), pointer :: cpoly
   type(sitetype),pointer :: csite
+  type(met_driv_state), pointer :: cmet
   type(patchtype),pointer :: cpatch
 
 
@@ -726,39 +786,71 @@ subroutine event_till(rval8)
   print*,rval8
 
   do ifm = 1,ngrids
-     cgrid => edgrid_g(ifm) 
+     cgrid => edgrid_g(ifm)
      do ipy = 1,cgrid%npolygons
-        
+
         cpoly => cgrid%polygon(ipy)
-        
+
         do isi = 1,cpoly%nsites
-           
+
            csite => cpoly%site(isi)
+           cmet  => cpoly%met(isi)
 
            do ipa=1,csite%npatches
-              
+
               cpatch => csite%patch(ipa)
               print*,cpatch%ncohorts
               if(cpatch%ncohorts > 0) then
 
               do ico=1,cpatch%ncohorts
-                 
-                 pft = cpatch%pft(ico)                 
-                 !! move biomass to debris/litter pools
-                 csite%fast_soil_C(ipa) = csite%fast_soil_C(ipa) + &
-                      f_labile(pft)*cpatch%balive(ico) + &
-                      cpatch%bstorage(ico)
 
-                 csite%structural_soil_C(ipa) = csite%structural_soil_C(ipa) + &
-                      (1.0-f_labile(pft))*cpatch%balive(ico) + &
-                      cpatch%bdead(ico) 
-                 csite%structural_soil_L(ipa) = csite%structural_soil_L(ipa) + &
-                      (1.0-f_labile(pft))*cpatch%balive(ico)* l2n_stem / c2n_stem(pft) + &
-                      cpatch%bdead(ico)* l2n_stem / c2n_stem(pft)
-                 csite%fast_soil_N(ipa) = csite%fast_soil_N(ipa) &
-                      + f_labile(pft)*cpatch%balive(ico)/c2n_leaf(pft) &
-                      + cpatch%bstorage(ico)/c2n_storage
-                 !! where does bdead's N go??
+                 pft = cpatch%pft(ico)
+                 a_bfast  = f_labile_leaf(pft)           * cpatch%bleaf (ico)              &
+                          + f_labile_stem(pft)                                             &
+                          * ( cpatch%bsapwooda(ico)      + cpatch%bbarka(ico)              &
+                            + cpatch%bdeada(ico)                             )
+                 b_bfast  = f_labile_leaf(pft)           * cpatch%broot (ico)              &
+                          + f_labile_stem(pft)                                             &
+                          * ( cpatch%bsapwoodb(ico)      + cpatch%bbarkb(ico)              &
+                            + cpatch%bdeadb(ico)                             )
+                 a_bstruct  = (1.0 - f_labile_leaf(pft)) * cpatch%bleaf (ico)              &
+                            + (1.0 - f_labile_stem(pft))                                   &
+                            * ( cpatch%bsapwooda(ico)    + cpatch%bbarka(ico)              &
+                              + cpatch%bdeada(ico)                           )
+                 b_bstruct  = (1.0 - f_labile_leaf(pft)) * cpatch%broot (ico)              &
+                            + (1.0 - f_labile_stem(pft))                                   &
+                            * ( cpatch%bsapwoodb(ico)    + cpatch%bbarkb(ico)              &
+                              + cpatch%bdeadb(ico)                           )
+                 a_bstorage = agf_bs(pft) * cpatch%bstorage(ico)
+                 b_bstorage = (1.0 - agf_bs(pft)) * cpatch%bstorage(ico)
+                 !! MLO - I multiplied bfast/bstruct/bstorage by cpatch%nplant.  
+                 !!       I never used this routine and I am not sure about this fix,
+                 !!       but it seems to me that the units were inconsistent
+                 !!       (fast_soil_C/struct_soil_C are in kgC/m2 whereas
+                 !!       bfast/bstruct/bstorage are in kgC/plant)
+                 
+                 !! move biomass to debris/litter pools
+                 csite%fast_grnd_C(ipa)       = csite%fast_grnd_C(ipa)                     &
+                                              + cpatch%nplant(ico) * (a_bfast + a_bstorage)
+                 csite%fast_soil_C(ipa)       = csite%fast_soil_C(ipa)                     &
+                                              + cpatch%nplant(ico) * (b_bfast + b_bstorage)
+
+                 csite%structural_grnd_C(ipa) = csite%structural_grnd_C(ipa)               &
+                                              + cpatch%nplant(ico) * a_bstruct
+                 csite%structural_soil_C(ipa) = csite%structural_soil_C(ipa)               &
+                                              + cpatch%nplant(ico) * b_bstruct
+                 csite%structural_grnd_L(ipa) = csite%structural_grnd_L(ipa)               &
+                                              + cpatch%nplant(ico) * a_bstruct             &
+                                              * l2n_stem / c2n_stem(pft)
+                 csite%structural_soil_L(ipa) = csite%structural_soil_L(ipa)               &
+                                              + cpatch%nplant(ico) * b_bstruct             &
+                                              * l2n_stem / c2n_stem(pft)
+                 csite%fast_grnd_N(ipa) = csite%fast_grnd_N(ipa)                           &
+                                        + cpatch%nplant(ico) * ( a_bfast/c2n_leaf(pft)     &
+                                                               + a_bstorage / c2n_storage )
+                 csite%fast_soil_N(ipa) = csite%fast_soil_N(ipa)                           &
+                                        + cpatch%nplant(ico) * ( b_bfast/c2n_leaf(pft)     &
+                                                               + b_bstorage / c2n_storage )
 
 
                  !! update biomass pools
@@ -766,46 +858,75 @@ subroutine event_till(rval8)
                  cpatch%broot(ico)            = 0.0
                  cpatch%bsapwooda(ico)        = 0.0
                  cpatch%bsapwoodb(ico)        = 0.0
-                 cpatch%bdead(ico)            = 0.0
+                 cpatch%bbarka(ico)           = 0.0
+                 cpatch%bbarkb(ico)           = 0.0
+                 cpatch%bdeada(ico)           = 0.0
+                 cpatch%bdeadb(ico)           = 0.0
                  cpatch%bstorage(ico)         = 0.0
+                 cpatch%thbark(ico)           = 0.0
                  cpatch%nplant(ico)           = 0.0
                  cpatch%lai(ico)              = 0.0
                  cpatch%wai(ico)              = 0.0
                  cpatch%crown_area(ico)       = 0.0
                  cpatch%bleaf(ico)            = 0.0
                  cpatch%leaf_water(ico)       = 0.0
-                 cpatch%leaf_fliq(ico)        = 0.0
                  cpatch%leaf_temp(ico)        = csite%can_temp(ipa)
+                 cpatch%leaf_temp_pv(ico)     = csite%can_temp(ipa)
                  cpatch%leaf_vpdef(ico)       = csite%can_vpdef(ipa)
                  cpatch%wood_water(ico)       = 0.0
-                 cpatch%wood_fliq(ico)        = 0.0
                  cpatch%wood_temp(ico)        = csite%can_temp(ipa)
-                 call calc_veg_hcap(cpatch%bleaf(ico),cpatch%bdead(ico)                    &
-                                   ,cpatch%bsapwooda(ico),cpatch%nplant(ico)               &
-                                   ,cpatch%pft(ico)                                        &
+                 cpatch%wood_temp_pv(ico)     = csite%can_temp(ipa)
+
+
+                 if (cpatch%leaf_temp(ico) == t3ple) then
+                    cpatch%leaf_fliq(ico) = 0.5
+                 elseif (cpatch%leaf_temp(ico) > t3ple) then
+                    cpatch%leaf_fliq(ico) = 1.0
+                 else
+                    cpatch%leaf_fliq(ico) = 0.0
+                 end if
+                 if (cpatch%wood_temp(ico) == t3ple) then
+                    cpatch%wood_fliq(ico) = 0.5
+                 elseif (cpatch%wood_temp(ico) > t3ple) then
+                    cpatch%wood_fliq(ico) = 1.0
+                 else
+                    cpatch%wood_fliq(ico) = 0.0
+                 end if
+                 call calc_veg_hcap(cpatch%bleaf(ico),cpatch%bdeada(ico)                   &
+                                   ,cpatch%bsapwooda(ico),cpatch%bbarka(ico)               &
+                                   ,cpatch%nplant(ico),cpatch%pft(ico)                     &
                                    ,cpatch%leaf_hcap(ico),cpatch%wood_hcap(ico))
-                 cpatch%leaf_energy(ico) = cmtl2uext(cpatch%leaf_hcap (ico)                &
-                                                    ,cpatch%leaf_water(ico)                &
-                                                    ,cpatch%leaf_temp (ico)                &
-                                                    ,cpatch%leaf_fliq (ico))
-                 cpatch%wood_energy(ico) = cmtl2uext(cpatch%wood_hcap (ico)                &
-                                                    ,cpatch%wood_water(ico)                &
-                                                    ,cpatch%wood_temp (ico)                &
-                                                    ,cpatch%wood_fliq (ico))
+                 call rwc2tw(cpatch%leaf_rwc(ico),cpatch%wood_rwc(ico)                     &
+                            ,cpatch%bleaf(ico),cpatch%bsapwooda(ico),cpatch%bsapwoodb(ico) &
+                            ,cpatch%bdeada(ico),cpatch%bdeadb(ico),cpatch%broot(ico)       &
+                            ,cpatch%dbh(ico),cpatch%pft(ico),cpatch%leaf_water_int(ico)    &
+                            ,cpatch%wood_water_int(ico))
+                 call twi2twe(cpatch%leaf_water_int(ico),cpatch%wood_water_int(ico)        &
+                             ,cpatch%nplant(ico),cpatch%leaf_water_im2(ico)                &
+                             ,cpatch%wood_water_im2(ico))
+                 cpatch%leaf_energy(ico) = cmtl2uext( cpatch%leaf_hcap     (ico)           &
+                                                    , cpatch%leaf_water    (ico)           &
+                                                    + cpatch%leaf_water_im2(ico)           &
+                                                    , cpatch%leaf_temp     (ico)           &
+                                                    , cpatch%leaf_fliq     (ico) )
+                 cpatch%wood_energy(ico) = cmtl2uext( cpatch%wood_hcap     (ico)           &
+                                                    , cpatch%wood_water    (ico)           &
+                                                    + cpatch%wood_water_im2(ico)           &
+                                                    , cpatch%wood_temp     (ico)           &
+                                                    , cpatch%wood_fliq     (ico) )
                  cpatch%phenology_status(ico) = -2
                  cpatch%elongf(ico)           = 0.0
-                 
+
               enddo
               !! remove small cohorts
-              call terminate_cohorts(csite,ipa,elim_nplant,elim_lai)
+              call terminate_cohorts(csite,ipa,cmet,.false.,elim_nplant,elim_lai)
 
               !! update patch properties
-              call update_patch_derived_props(csite,ipa)
-              call update_budget(csite, cpoly%lsl(isi),ipa,ipa)
+              call update_patch_derived_props(csite,ipa,.true.)
               endif
            enddo
            ! Update site properties. ## THINK ABOUT WHAT TO SET FLAG##########
-           call update_site_derived_props(cpoly,0,isi)           
+           call update_site_derived_props(cpoly,0,isi)
         end do
      end do
 
@@ -831,8 +952,8 @@ end subroutine event_till
 !!$              cpatch%nplant(ico)  = density
 !!$              cpatch%hite(ico)    = hgt_min(pft)
 !!$              cpatch%dbh(ico)     = h2dbh(hgt_min(pft),pft)
-!!$              cpatch%bdead(ico)   = dbh2bd(cpatch%dbh(ico),pft)
-!!$              cpatch%bleaf(ico)   = size2bl(cpatch%dbh(ico),cpatch%hite(ico),pft)
+!!$              cpatch%bdead(ico)   = size2bd(cpatch%dbh(ico),cpatch%hite(ico),pft)
+!!$              cpatch%bleaf(ico)   = size2bl(cpatch%dbh(ico),cpatch%hite(ico),cpatch%sla(ico),pft)
 !!$print*,cpatch%hite(ico),cpatch%dbh(ico),cpatch%bdead(ico),cpatch%bleaf(ico)
 !!$              cpatch%phenology_status(ico) = 0
 !!$              cpatch%balive(ico)  = cpatch%bleaf(ico)* &
@@ -852,18 +973,17 @@ end subroutine event_till
 !!$print*,cpatch%veg_energy(ico)
 !!$
 !!$              !! count as new recruitment?
-!!$              cpatch%new_recruit_flag(ico) = 1 
+!!$              cpatch%new_recruit_flag(ico) = 1
 !!$print*,"init_cohorts"
 !!$              call init_ed_cohort_vars(cpatch,ico,cpoly%lsl(isi))
-!!$              
+!!$
 !!$              csite%cohort_count(ipa) = csite%cohort_count(ipa) + 1
 !!$              cpatch%ncohorts = ico
 !!$              csite%paco_n(ipa) = ico
 !!$
 !!$              ! Sort the cohorts so that the new cohort is at the correct height bin
 !!$
-!!$              call sort_cohorts(cpatch)           
-!!$   
-!!$!              call update_patch_derived_props(csite, ipa)
-!!$!              call update_budget(csite, cpoly%lsl(isi), ipa, ipa)
-!!$          
+!!$              call sort_cohorts(cpatch)
+!!$
+!!$!              call update_patch_derived_props(csite, ipa,.true.)
+!!$

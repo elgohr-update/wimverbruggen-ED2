@@ -11,10 +11,18 @@ subroutine read_ednl(iunit,filename)
                                    , maxgrds                               ! ! intent(in)
    use soil_coms            , only : ed_zrough => zrough                   & ! intent(out)
                                    , soil_database                         & ! intent(out)
+                                   , slcol_database                        & ! intent(out)
                                    , isoilstateinit                        & ! intent(out)
+                                   , soil_hydro_scheme                     & ! intent(out)
+                                   , islcolflg                             & ! intent(out)
+                                   , slsoc                                 & ! intent(out)
+                                   , slph                                  & ! intent(out)
+                                   , slcec                                 & ! intent(out)
+                                   , sldbd                                 & ! intent(out)
                                    , isoildepthflg                         & ! intent(out)
                                    , isoilbc                               & ! intent(out)
                                    , sldrain                               & ! intent(out)
+                                   , slcol_database                        & ! intent(out)
                                    , soilstate_db                          & ! intent(out)
                                    , soildepth_db                          & ! intent(out)
                                    , runoff_time                           & ! intent(out)
@@ -46,8 +54,16 @@ subroutine read_ednl(iunit,filename)
    use physiology_coms      , only : iphysiol                              & ! intent(out)
                                    , quantum_efficiency_t                  & ! intent(out)
                                    , h2o_plant_lim                         & ! intent(out)
+                                   , plant_hydro_scheme                    & ! intent(out)
+                                   , istomata_scheme                       & ! intent(out)
+                                   , istruct_growth_scheme                 & ! intent(out)
+                                   , istem_respiration_scheme              & ! intent(out)
+                                   , trait_plasticity_scheme               & ! intent(out)
                                    , iddmort_scheme                        & ! intent(out)
+                                   , cbr_scheme                            & ! intent(out)
                                    , ddmort_const                          & ! intent(out)
+                                   , carbon_mortality_scheme               & ! intent(out)
+                                   , hydraulic_mortality_scheme            & ! intent(out)
                                    , n_plant_lim                           & ! intent(out)
                                    , vmfact_c3                             & ! intent(out)
                                    , vmfact_c4                             & ! intent(out)
@@ -68,9 +84,6 @@ subroutine read_ednl(iunit,filename)
                                    , klowco2in                             & ! intent(out)
                                    , rrffact                               & ! intent(out)
                                    , growthresp                            & ! intent(out)
-                                   , lwidth_grass                          & ! intent(out)
-                                   , lwidth_bltree                         & ! intent(out)
-                                   , lwidth_nltree                         & ! intent(out)
                                    , q10_c3                                & ! intent(out)
                                    , q10_c4                                ! ! intent(out)
    use phenology_coms       , only : iphen_scheme                          & ! intent(out)
@@ -88,6 +101,20 @@ subroutine read_ednl(iunit,filename)
    use disturb_coms         , only : include_fire                          & ! intent(out)
                                    , fire_parameter                        & ! intent(out)
                                    , ianth_disturb                         & ! intent(out)
+                                   , sl_scale                              & ! intent(out)
+                                   , sl_yr_first                           & ! intent(out)
+                                   , sl_nyrs                               & ! intent(out)
+                                   , sl_pft                                & ! intent(out)
+                                   , sl_prob_harvest                       & ! intent(out)
+                                   , sl_mindbh_harvest                     & ! intent(out)
+                                   , sl_biomass_harvest                    & ! intent(out)
+                                   , sl_skid_rel_area                      & ! intent(out)
+                                   , sl_skid_s_gtharv                      & ! intent(out)
+                                   , sl_skid_s_ltharv                      & ! intent(out)
+                                   , sl_felling_s_ltharv                   & ! intent(out)
+                                   , cl_fseeds_harvest                     & ! intent(out)
+                                   , cl_fstorage_harvest                   & ! intent(out)
+                                   , cl_fleaf_harvest                      ! ! intent(out)
                                    , lu_database                           & ! intent(out)
                                    , plantation_file                       & ! intent(out)
                                    , lu_rescale_file                       & ! intent(out)
@@ -96,6 +123,7 @@ subroutine read_ednl(iunit,filename)
                                    , sm_fire                               & ! intent(out)
                                    , min_patch_area                        ! ! intent(out)
    use pft_coms             , only : include_these_pft                     & ! intent(out)
+                                   , pasture_stock                         & ! intent(out)
                                    , agri_stock                            & ! intent(out)
                                    , plantation_stock                      & ! intent(out)
                                    , pft_1st_check                         ! ! intent(out)
@@ -105,7 +133,9 @@ subroutine read_ednl(iunit,filename)
                                    , iqoutput                              & ! intent(out)
                                    , iyoutput                              & ! intent(out)
                                    , itoutput                              & ! intent(out)
+                                   , iooutput                              & ! intent(out)
                                    , isoutput                              & ! intent(out)
+                                   , obstime_db                            & ! intent(out)
                                    , iadd_site_means                       & ! intent(out)
                                    , iadd_patch_means                      & ! intent(out)
                                    , iadd_cohort_means                     & ! intent(out)
@@ -125,6 +155,7 @@ subroutine read_ednl(iunit,filename)
                                    , integration_scheme                    & ! intent(out)
                                    , ffilout                               & ! intent(out)
                                    , dtlsm                                 & ! intent(out)
+                                   , month_yrstep                          & ! intent(out)
                                    , iprintpolys                           & ! intent(out)
                                    , printvars                             & ! intent(out)
                                    , npvars                                & ! intent(out)
@@ -134,10 +165,12 @@ subroutine read_ednl(iunit,filename)
                                    , iedcnfgf                              & ! intent(out)
                                    , ffilout                               & ! intent(out)
                                    , sfilout                               & ! intent(out)
+                                   , restore_file                          & ! intent(out)
                                    , sfilin                                & ! intent(out)
                                    , event_file                            & ! intent(out)
                                    , attach_metadata                       & ! intent(out)
                                    , iallom                                & ! intent(out)
+                                   , economics_scheme                      & ! intent(out)
                                    , igrass                                & ! intent(out)
                                    , min_site_area                         & ! intent(out)
                                    , fast_diagnostics                      & ! intent(out)
@@ -152,7 +185,10 @@ subroutine read_ednl(iunit,filename)
                                    , history_eorq                          ! ! intent(out)
    use canopy_air_coms      , only : icanturb                              & ! intent(out)
                                    , isfclyrm                              & ! intent(out)
-                                   , ied_grndvap                           ! ! intent(out)
+                                   , ied_grndvap                           & ! intent(out)
+                                   , lwidth_grass                          & ! intent(out)
+                                   , lwidth_bltree                         & ! intent(out)
+                                   , lwidth_nltree                         ! ! intent(out)
    use grid_coms            , only : timmax                                & ! intent(out)
                                    , time                                  ! ! intent(out)
    use optimiz_coms         , only : ioptinpt                              ! ! intent(out)
@@ -160,6 +196,7 @@ subroutine read_ednl(iunit,filename)
                                    , ibranch_thermo                        ! ! intent(out)
    use canopy_layer_coms    , only : crown_mod                             ! ! intent(out)
    use canopy_radiation_coms, only : icanrad                               & ! intent(out)
+                                   , ihrzrad                               & ! intent(out)
                                    , ltrans_vis                            & ! intent(out)
                                    , ltrans_nir                            & ! intent(out)
                                    , lreflect_vis                          & ! intent(out)
@@ -235,6 +272,7 @@ subroutine read_ednl(iunit,filename)
                                    , min_recruit_dbh                       & ! intent(out)
                                    , idetailed                             & ! intent(out)
                                    , patch_keep                            ! ! intent(out)
+   use fusion_fission_coms  , only : ifusion                               ! ! intent(out)
    implicit none
    !----- Arguments. ----------------------------------------------------------------------!
    integer         , intent(in) :: iunit    ! Namelist unit number
@@ -245,30 +283,40 @@ subroutine read_ednl(iunit,filename)
    logical                      :: fexists
    logical                      :: op
    !----- Namelist. -----------------------------------------------------------------------!
-   namelist /ED2_INFO/  dtlsm,co2_offset,ifoutput,idoutput,imoutput,iqoutput,iyoutput      &
-                       ,itoutput,isoutput,iadd_site_means,iadd_patch_means                 &
-                       ,iadd_cohort_means,attach_metadata,outfast,outstate,ffilout,sfilout &
-                       ,ied_init_mode,edres,sfilin,veg_database,soil_database,lu_database  &
-                       ,plantation_file,lu_rescale_file,thsums_database,soilstate_db       &
-                       ,soildepth_db,isoilstateinit,isoildepthflg,ivegt_dynamics,ibigleaf  &
-                       ,integration_scheme,rk4_tolerance,ibranch_thermo,iphysiol,iallom    &
-                       ,igrass,iphen_scheme,radint,radslp,repro_scheme,lapse_scheme        &
-                       ,crown_mod,icanrad,ltrans_vis,ltrans_nir,lreflect_vis,lreflect_nir  &
-                       ,orient_tree,orient_grass,clump_tree,clump_grass,decomp_scheme      &
-                       ,h2o_plant_lim,iddmort_scheme,ddmort_const,vmfact_c3,vmfact_c4      &
-                       ,mphoto_trc3,mphoto_tec3,mphoto_c4,bphoto_blc3,bphoto_nlc3          &
-                       ,bphoto_c4,kw_grass,kw_tree,gamma_c3,gamma_c4,d0_grass,d0_tree      &
-                       ,alpha_c3,alpha_c4,klowco2in,rrffact,growthresp,lwidth_grass        &
-                       ,lwidth_bltree,lwidth_nltree,q10_c3,q10_c4,thetacrit                &
-                       ,quantum_efficiency_t,n_plant_lim,n_decomp_lim,include_fire         &
-                       ,fire_parameter,sm_fire,ianth_disturb,icanturb,include_these_pft    &
-                       ,agri_stock,plantation_stock,pft_1st_check,maxpatch,maxcohort       &
-                       ,min_patch_area,treefall_disturbance_rate,time2canopy,iprintpolys   &
-                       ,npvars,printvars,pfmtstr,ipmin,ipmax,imetrad,iphenys1,iphenysf     &
-                       ,iphenyf1,iphenyff,iedcnfgf,event_file,phenpath
+   namelist /ED2_INFO/  dtlsm,month_yrstep,co2_offset,ifoutput,idoutput,imoutput,iqoutput  &
+                       ,iyoutput,itoutput,iooutput,isoutput,iadd_site_means                &
+                       ,iadd_patch_means,iadd_cohort_means,attach_metadata,outfast         &
+                       ,outstate,ffilout,sfilout,ied_init_mode,edres,sfilin,islcolflg      &
+                       ,slsoc,slph,slcec,sldbd,veg_database,soil_database,slcol_database   &
+                       ,lu_database,plantation_file,lu_rescale_file,thsums_database        &
+                       ,obstime_db,soilstate_db,soildepth_db,isoilstateinit,isoildepthflg  &
+                       ,soil_hydro_scheme,ivegt_dynamics,ibigleaf,integration_scheme       &
+                       ,nsub_euler,rk4_tolerance,ibranch_thermo,iphysiol,iallom            &
+                       ,economics_scheme,igrass,iphen_scheme,radint,radslp,repro_scheme    &
+                       ,lapse_scheme,crown_mod,icanrad,ihrzrad,ltrans_vis,ltrans_nir       &
+                       ,lreflect_vis,lreflect_nir,orient_tree,orient_grass,clump_tree      &
+                       ,clump_grass,decomp_scheme,h2o_plant_lim,plant_hydro_scheme         &
+                       ,istomata_scheme,istruct_growth_scheme,istem_respiration_scheme     &
+                       ,trait_plasticity_scheme,iddmort_scheme,cbr_scheme,ddmort_const     &
+                       ,carbon_mortality_scheme,hydraulic_mortality_scheme,vmfact_c3       &
+                       ,vmfact_c4,mphoto_trc3,mphoto_tec3,mphoto_c4,bphoto_blc3            &
+                       ,bphoto_nlc3,bphoto_c4,kw_grass,kw_tree,gamma_c3,gamma_c4,d0_grass  &
+                       ,d0_tree,alpha_c3,alpha_c4,klowco2in,rrffact,growthresp             &
+                       ,lwidth_grass,lwidth_bltree,lwidth_nltree,q10_c3,q10_c4,thetacrit   &
+                       ,quantum_efficiency_t,n_plant_lim,n_decomp_lim,include_fire,sl_pft  &
+                       ,sl_prob_harvest,sl_mindbh_harvest,sl_biomass_harvest               &
+                       ,sl_skid_rel_area,sl_skid_s_gtharv,sl_skid_s_ltharv                 &
+                       ,sl_felling_s_ltharv,cl_fseeds_harvest,cl_fstorage_harvest          &
+                       ,cl_fleaf_harvest,icanturb,include_these_pft,pasture_stock          &
+                       ,agri_stock,plantation_stock,pft_1st_check,ifusion,maxpatch         &
+                       ,maxcohort,min_patch_area,treefall_disturbance_rate,time2canopy     &
+                       ,iprintpolys,npvars,printvars,pfmtstr,ipmin,ipmax,imetrad,iphenys1  &
+                       ,iphenysf,iphenyf1,iphenyff,iedcnfgf,event_file,phenpath
 
    !----- Initialise some database variables with a non-sense path. -----------------------!
+   islcolflg       (:) = undef_integer
    soil_database   (:) = undef_path
+   slcol_database  (:) = undef_path
    veg_database    (:) = undef_path
    lu_database     (:) = undef_path
    plantation_file (:) = undef_path
@@ -292,6 +340,7 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt='(a)')        '--------------------------------------------------'
       write (unit=*,fmt='(a)')        ''
       write (unit=*,fmt=*) ' dtlsm                     =',dtlsm
+      write (unit=*,fmt=*) ' month_yrstep              =',month_yrstep
       write (unit=*,fmt=*) ' co2_offset                =',co2_offset
       write (unit=*,fmt=*) ' ifoutput                  =',ifoutput
       write (unit=*,fmt=*) ' idoutput                  =',idoutput
@@ -312,10 +361,18 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' edres                     =',edres
       write (unit=*,fmt=*) ' sfilin                    =',(trim(sfilin(i))//';'            &
                                                           ,i=1,size(sfilin))
+      write (unit=*,fmt=*) ' islcolflg                 =',(islcolflg(i)//';'               &
+                                                          ,i=1,size(islcolflg))
+      write (unit=*,fmt=*) ' slsoc                     =',slcol
+      write (unit=*,fmt=*) ' slsoc                     =',slph
+      write (unit=*,fmt=*) ' slsoc                     =',slcec
+      write (unit=*,fmt=*) ' slsoc                     =',sldbd
       write (unit=*,fmt=*) ' veg_database              =',(trim(veg_database(i))//';'      &
                                                           ,i=1,size(veg_database))
       write (unit=*,fmt=*) ' soil_database             =',(trim(soil_database(i))//';'     &
                                                           ,i=1,size(soil_database))
+      write (unit=*,fmt=*) ' slcon_database            =',(trim(slcon_database(i))//';'    &
+                                                          ,i=1,size(slcon_database))
       write (unit=*,fmt=*) ' lu_database               =',(trim(lu_database(i))//';'       &
                                                           ,i=1,size(lu_database))
       write (unit=*,fmt=*) ' plantation_file           =',(trim(plantation_file(i))//';'   &
@@ -327,6 +384,7 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' soildepth_db              =',trim(soildepth_db)
       write (unit=*,fmt=*) ' isoilstateinit            =',isoilstateinit
       write (unit=*,fmt=*) ' isoildepthflg             =',isoildepthflg
+      write (unit=*,fmt=*) ' soil_hydro_scheme         =',soil_hydro_scheme
       write (unit=*,fmt=*) ' ivegt_dynamics            =',ivegt_dynamics
       write (unit=*,fmt=*) ' ibigleaf                  =',ibigleaf
       write (unit=*,fmt=*) ' integration_scheme        =',integration_scheme
@@ -334,6 +392,7 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' ibranch_thermo            =',ibranch_thermo
       write (unit=*,fmt=*) ' iphysiol                  =',iphysiol
       write (unit=*,fmt=*) ' iallom                    =',iallom
+      write (unit=*,fmt=*) ' economics_scheme          =',economics_scheme
       write (unit=*,fmt=*) ' igrass                    =',igrass
       write (unit=*,fmt=*) ' iphen_scheme              =',iphen_scheme
       write (unit=*,fmt=*) ' radint                    =',radint
@@ -342,6 +401,7 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' lapse_scheme              =',lapse_scheme
       write (unit=*,fmt=*) ' crown_mod                 =',crown_mod
       write (unit=*,fmt=*) ' icanrad                   =',icanrad
+      write (unit=*,fmt=*) ' ihrzrad                   =',ihrzrad
       write (unit=*,fmt=*) ' ltrans_vis                =',ltrans_vis
       write (unit=*,fmt=*) ' ltrans_nir                =',ltrans_nir
       write (unit=*,fmt=*) ' lreflect_vis              =',lreflect_vis
@@ -352,6 +412,10 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' clump_grass               =',clump_grass
       write (unit=*,fmt=*) ' decomp_scheme             =',decomp_scheme
       write (unit=*,fmt=*) ' h2o_plant_lim             =',h2o_plant_lim
+      write (unit=*,fmt=*) ' plant_hydro_scheme        =',plant_hydro_scheme
+      write (unit=*,fmt=*) ' istomata_scheme           =',istomata_scheme
+      write (unit=*,fmt=*) ' istruct_growth_scheme     =',istruct_growth_scheme
+      write (unit=*,fmt=*) ' trait_plasticity_scheme   =',trait_plasticity_scheme
       write (unit=*,fmt=*) ' iddmort_scheme            =',iddmort_scheme
       write (unit=*,fmt=*) ' ddmort_const              =',ddmort_const
       write (unit=*,fmt=*) ' vmfact_c3                 =',vmfact_c3
@@ -388,13 +452,15 @@ subroutine read_ednl(iunit,filename)
       write (unit=*,fmt=*) ' ianth_disturb             =',ianth_disturb
       write (unit=*,fmt=*) ' icanturb                  =',icanturb
       write (unit=*,fmt=*) ' include_these_pft         =',include_these_pft
+      write (unit=*,fmt=*) ' pasture_stock             =',pasture_stock
       write (unit=*,fmt=*) ' agri_stock                =',agri_stock
       write (unit=*,fmt=*) ' plantation_stock          =',plantation_stock
       write (unit=*,fmt=*) ' pft_1st_check             =',pft_1st_check
+      write (unit=*,fmt=*) ' ifusion                   =',ifusion
       write (unit=*,fmt=*) ' maxsite                   =',maxsite
       write (unit=*,fmt=*) ' maxpatch                  =',maxpatch
       write (unit=*,fmt=*) ' maxcohort                 =',maxcohort
-      write (unit=*,fmt=*) ' min_patch_area            =',min_patch_area
+      write (unit=*,fmt=*) ' min_site_area             =',min_site_area
       write (unit=*,fmt=*) ' treefall_disturbance_rate =',treefall_disturbance_rate
       write (unit=*,fmt=*) ' time2canopy               =',time2canopy
       write (unit=*,fmt=*) ' iprintpolys               =',iprintpolys
@@ -468,6 +534,14 @@ subroutine read_ednl(iunit,filename)
                             !     with just the normal output...)
    patch_keep = 0           ! Keep all patches.
    !---------------------------------------------------------------------------------------!
+
+
+
+   !----- Restore file (not yet implemented in coupled runs). -----------------------------!
+   restore_file = trim(sfilout)//'_restore_time.txt'
+   !---------------------------------------------------------------------------------------!
+
+
 
    !---------------------------------------------------------------------------------------!
    !      We make sure that the maximum number of sites per polygon in ED2 is equivalent   !

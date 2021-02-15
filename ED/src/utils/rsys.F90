@@ -40,59 +40,6 @@ end subroutine ugetarg
 !==========================================================================================!
 
 
-
-
-
-
-!==========================================================================================!
-!==========================================================================================!
-!     Returns the endian 'type' of machine.                                                !
-!------------------------------------------------------------------------------------------!
-subroutine endian(mach_type)
-   implicit none
-   character(len=*) :: mach_type
-
-#if defined(ALPHA) || defined(PC_NT1)
-   mach_type='little_endian'
-#else
-   mach_type='big_endian'
-#endif
-
-   return
-end subroutine endian
-!==========================================================================================!
-!==========================================================================================!
-
-
-
-
-
-
-!==========================================================================================!
-!==========================================================================================!
-!     This function returns a factor for the length of a random access record length unit. !
-! For example, IBM specifies bytes while SGI uses words, so specify the open statement in  !
-! WORDS, then multiply by this returned value.                                             !
-!------------------------------------------------------------------------------------------!
-integer function iran_recsize()
-   implicit none
-      
-#if defined(ALPHA) || defined(CRAY) 
-   iran_recsize = 1
-#else
-   iran_recsize = 4
-#endif
-
-   return
-end function iran_recsize
-!==========================================================================================!
-!==========================================================================================!
-
-
-
-
-
-
 !==========================================================================================!
 !==========================================================================================!
 !     Routine returns CPU time.  Called with ICALL=1 at beginning of timestep, ICALL=2 at  !
@@ -112,7 +59,7 @@ subroutine timing(icall,t1)
    real   , external     :: mclock
 #elif defined(CRAY)
    real   , external     :: cputime
-#elif defined(MAC_OS_X)
+#elif defined(__APPLE__)
    real                  :: etime
 #elif defined(PC_GFORTRAN)
    real                  :: etime
@@ -159,36 +106,24 @@ end subroutine timing
 
 
 
-
 !==========================================================================================!
 !==========================================================================================!
-!    This subroutine swaps the order of two bytes in integers of kind=2.                   !
+!     Function that checks whether a number is NaN.  This works with PGI, Intel, and GNU.  !
 !------------------------------------------------------------------------------------------!
-subroutine dcw_swap16 (a,n)
+logical function isnan_real(x)
    implicit none
+   !------ Arguments. ---------------------------------------------------------------------!
+   real, intent(in) :: x
+   !---------------------------------------------------------------------------------------!
 
-   integer                       , intent(in)    :: n
-   integer(kind=2) , dimension(n), intent(inout) :: a
-
-#if defined(SGI)
-
-   integer(kind=2)                               :: itemp
-   integer                                       :: i
-   character(len=1), dimension(2)                :: jtemp
-   character(len=1)                              :: ktemp
-   equivalence  (itemp,jtemp(1))
-
-   do i=1,n
-      itemp    = a(i)
-      ktemp    = jtemp(1)
-      jtemp(1) = jtemp(2)
-      jtemp(2) = ktemp
-      a(i)     = itemp
-   end do
+#if defined(PGI)
+   isnan_real = x == x
+#else
+   isnan_real = isnan(x)
 #endif
 
    return
-end subroutine dcw_swap16
+end function isnan_real
 !==========================================================================================!
 !==========================================================================================!
 
@@ -196,84 +131,21 @@ end subroutine dcw_swap16
 
 
 
-
 !==========================================================================================!
 !==========================================================================================!
-!     This subroutine swaps the order of bytes in integers or real numbers of kind=4.      !
+!     Function that waits for a few seconds before moving on.  This may be useful for OMP  !
+! instructions.  Most fortran distributions should work fine with built-in sleep, but it   !
+! may require libraries.                                                                   !
 !------------------------------------------------------------------------------------------!
-subroutine dcw_swap32 (a,n)
+subroutine wait_sec(x)
    implicit none
+   !------ Arguments. ---------------------------------------------------------------------!
+   integer, intent(in) :: x
+   !---------------------------------------------------------------------------------------!
 
-   integer                       , intent(in)    :: n
-   integer(kind=4) , dimension(n), intent(inout) :: a
-
-
-#if defined(SGI)
-
-   integer(kind=4)                               :: itemp
-   integer                                       :: i
-   character(len=1), dimension(4)                :: jtemp
-   character(len=1)                              :: ktemp
-   equivalence (jtemp(1),itemp)
-
-   do i=1,n
-      itemp    = a(i)
-      ktemp    = jtemp(4)
-      jtemp(4) = jtemp(1)
-      jtemp(1) = ktemp
-      ktemp    = jtemp(3)
-      jtemp(3) = jtemp(2)
-      jtemp(2) = ktemp
-      a(i)     = itemp
-   end do
-#endif
+   call sleep(x)
 
    return
-end subroutine dcw_swap32
-!==========================================================================================!
-!==========================================================================================!
-
-
-
-
-
-
-!==========================================================================================!
-!==========================================================================================!
-!     This subroutine swaps the order of bytes in real numbers of kind=8.                  !
-!------------------------------------------------------------------------------------------!
-subroutine dcw_swap64 (a,n)
-  implicit none
-
-   integer                       , intent(in)    :: n
-   integer(kind=8) , dimension(n), intent(inout) :: a
-
-#if defined(SGI)
-
-   integer(kind=8)                               :: itemp
-   integer                                       :: i
-   character(len=1), dimension(8)                :: jtemp
-   character(len=1)                              :: ktemp
-   equivalence (jtemp(1),itemp)
-
-   do i = 1,n
-      itemp    = a(i)
-      ktemp    = jtemp(8)
-      jtemp(8) = jtemp(1)
-      jtemp(1) = ktemp
-      ktemp    = jtemp(7)
-      jtemp(7) = jtemp(2)
-      jtemp(2) = ktemp
-      ktemp    = jtemp(6)
-      jtemp(6) = jtemp(3)
-      jtemp(3) = ktemp
-      ktemp    = jtemp(5)
-      jtemp(5) = jtemp(4)
-      jtemp(4) = ktemp
-      a(i)     = itemp
-   end do
-#endif
-   return
-end subroutine dcw_swap64
+end subroutine wait_sec
 !==========================================================================================!
 !==========================================================================================!

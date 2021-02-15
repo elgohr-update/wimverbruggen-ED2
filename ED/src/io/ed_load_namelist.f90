@@ -19,14 +19,18 @@ subroutine read_nl(namelist_name)
       call fatal_error('The namelist file '//trim(namelist_name)//' is missing.'           &
                       ,'read_nl','ed_load_namelist.f90')
    end if
+   !---------------------------------------------------------------------------------------!
 
    !----- Initialise the name list with absurd, undefined values. -------------------------!
    call init_ename_vars(nl) 
+   !---------------------------------------------------------------------------------------!
   
    !----- Read grid point and options information from the namelist. ----------------------!
-   open (unit=10, status='OLD', file=namelist_name)
+   open (unit=10, status='old', file=namelist_name)
    read (unit=10, nml=ED_NL)
-   close(unit=10)
+   close(unit=10,status='keep')
+   !---------------------------------------------------------------------------------------!
+
 
    return
 end subroutine read_nl
@@ -45,20 +49,29 @@ subroutine copy_nl(copy_type)
    use ed_max_dims          , only : n_pft                     & ! intent(in)
                                    , nzgmax                    & ! intent(in)
                                    , undef_integer             & ! intent(in)
+                                   , skip_integer              & ! intent(in)
+                                   , skip_real                 & ! intent(in)
                                    , maxgrds                   ! ! intent(in)
    use ename_coms           , only : nl                        ! ! intent(in)
    use soil_coms            , only : find_soil_class           & ! function
                                    , isoilflg                  & ! intent(out)
+                                   , islcolflg                 & ! intent(out)
                                    , nslcon                    & ! intent(out)
                                    , isoilcol                  & ! intent(out)
                                    , slxclay                   & ! intent(out)
                                    , slxsand                   & ! intent(out)
+                                   , slsoc                     & ! intent(out)
+                                   , slph                      & ! intent(out)
+                                   , slcec                     & ! intent(out)
+                                   , sldbd                     & ! intent(out)
                                    , slmstr                    & ! intent(out)
                                    , stgoff                    & ! intent(out)
                                    , zrough                    & ! intent(out)
                                    , soil_database             & ! intent(out)
+                                   , slcol_database            & ! intent(out)
                                    , isoilstateinit            & ! intent(out)
                                    , isoildepthflg             & ! intent(out)
+                                   , soil_hydro_scheme         & ! intent(out)
                                    , isoilbc                   & ! intent(out)
                                    , sldrain                   & ! intent(out)
                                    , soilstate_db              & ! intent(out)
@@ -92,9 +105,16 @@ subroutine copy_nl(copy_type)
                                    , maxcohort                 ! ! intent(out)
    use physiology_coms      , only : iphysiol                  & ! intent(out)
                                    , h2o_plant_lim             & ! intent(out)
+                                   , plant_hydro_scheme        & ! intent(out)
+                                   , istomata_scheme           & ! intent(out)
+                                   , istruct_growth_scheme     & ! intent(out)
+                                   , istem_respiration_scheme  & ! intent(out)
+                                   , trait_plasticity_scheme   & ! intent(out)
                                    , iddmort_scheme            & ! intent(out)
                                    , cbr_scheme                & ! intent(out)
                                    , ddmort_const              & ! intent(out)
+                                   , carbon_mortality_scheme   & ! intent(out)
+                                   , hydraulic_mortality_scheme& ! intent(out)
                                    , n_plant_lim               & ! intent(out)
                                    , vmfact_c3                 & ! intent(out)
                                    , vmfact_c4                 & ! intent(out)
@@ -115,9 +135,6 @@ subroutine copy_nl(copy_type)
                                    , klowco2in                 & ! intent(out)
                                    , rrffact                   & ! intent(out)
                                    , growthresp                & ! intent(out)
-                                   , lwidth_grass              & ! intent(out)
-                                   , lwidth_bltree             & ! intent(out)
-                                   , lwidth_nltree             & ! intent(out)
                                    , q10_c3                    & ! intent(out)
                                    , q10_c4                    & ! intent(out)
                                    , quantum_efficiency_T      ! ! intent(out)
@@ -142,8 +159,23 @@ subroutine copy_nl(copy_type)
                                    , lu_rescale_file           & ! intent(out)
                                    , sm_fire                   & ! intent(out)
                                    , time2canopy               & ! intent(out)
-                                   , min_patch_area            ! ! intent(out)
+                                   , min_patch_area            & ! intent(out)
+                                   , sl_scale                  & ! intent(out)
+                                   , sl_yr_first               & ! intent(out)
+                                   , sl_nyrs                   & ! intent(out)
+                                   , sl_pft                    & ! intent(out)
+                                   , sl_prob_harvest           & ! intent(out)
+                                   , sl_mindbh_harvest         & ! intent(out)
+                                   , sl_biomass_harvest        & ! intent(out)
+                                   , sl_skid_rel_area          & ! intent(out)
+                                   , sl_skid_s_gtharv          & ! intent(out)
+                                   , sl_skid_s_ltharv          & ! intent(out)
+                                   , sl_felling_s_ltharv       & ! intent(out)
+                                   , cl_fseeds_harvest         & ! intent(out)
+                                   , cl_fstorage_harvest       & ! intent(out)
+                                   , cl_fleaf_harvest          ! ! intent(out)
    use pft_coms             , only : include_these_pft         & ! intent(out)
+                                   , pasture_stock             & ! intent(out)
                                    , agri_stock                & ! intent(out)
                                    , plantation_stock          & ! intent(out)
                                    , pft_1st_check             ! ! intent(out)
@@ -174,16 +206,22 @@ subroutine copy_nl(copy_type)
                                    , ivegt_dynamics            & ! intent(out)
                                    , ibigleaf                  & ! intent(out)
                                    , integration_scheme        & ! intent(out)
+                                   , nsub_euler                & ! intent(out)
                                    , ffilout                   & ! intent(out)
                                    , idoutput                  & ! intent(out)
                                    , imoutput                  & ! intent(out)
                                    , iyoutput                  & ! intent(out)
                                    , iqoutput                  & ! intent(out)
                                    , itoutput                  & ! intent(out)
+                                   , iooutput                  & ! intent(out)
+                                   , igoutput                  & ! intent(out)
+                                   , obstime_db                & ! intent(out)
                                    , dtlsm                     & ! intent(out)
+                                   , month_yrstep              & ! intent(out)
                                    , frqstate                  & ! intent(out)
                                    , sfilout                   & ! intent(out)
                                    , isoutput                  & ! intent(out)
+                                   , gfilout                   & ! intent(out)
                                    , iadd_site_means           & ! intent(out)
                                    , iadd_patch_means          & ! intent(out)
                                    , iadd_cohort_means         & ! intent(out)
@@ -200,6 +238,7 @@ subroutine copy_nl(copy_type)
                                    , unitstate                 & ! intent(out)
                                    , event_file                & ! intent(out)
                                    , iallom                    & ! intent(out)
+                                   , economics_scheme          & ! intent(out)
                                    , igrass                    & ! intent(out)
                                    , min_site_area             & ! intent(out)
                                    , fast_diagnostics          & ! intent(out)
@@ -213,7 +252,8 @@ subroutine copy_nl(copy_type)
                                    , history_dail              & ! intent(out) 
                                    , history_eorq              & ! intent(out)
                                    , growth_resp_scheme        & ! intent(out)
-                                   , storage_resp_scheme       ! ! intent(out)
+                                   , storage_resp_scheme       & ! intent(out)
+                                   , attach_metadata           ! ! intent(out)
    use grid_coms            , only : time                      & ! intent(out)
                                    , centlon                   & ! intent(out)
                                    , centlat                   & ! intent(out)
@@ -230,7 +270,6 @@ subroutine copy_nl(copy_type)
                                    , time                      & ! intent(out)
                                    , nzg                       & ! intent(out)
                                    , nzs                       ! ! intent(out)
-   use ed_misc_coms         , only : attach_metadata           ! ! intent(out)
    use canopy_air_coms      , only : icanturb                  & ! intent(out)
                                    , isfclyrm                  & ! intent(out)
                                    , ied_grndvap               & ! intent(out)
@@ -241,10 +280,13 @@ subroutine copy_nl(copy_type)
                                    , gamh                      & ! intent(out)
                                    , tprandtl                  & ! intent(out)
                                    , ribmax                    & ! intent(out)
+                                   , lwidth_grass              & ! intent(out)
+                                   , lwidth_bltree             & ! intent(out)
+                                   , lwidth_nltree             & ! intent(out)
                                    , leaf_maxwhc               ! ! intent(out)
-   use optimiz_coms         , only : ioptinpt                  ! ! intent(out)
    use canopy_layer_coms    , only : crown_mod                 ! ! intent(out)
    use canopy_radiation_coms, only : icanrad                   & ! intent(out)
+                                   , ihrzrad                   & ! intent(out)
                                    , ltrans_vis                & ! intent(out)
                                    , ltrans_nir                & ! intent(out)
                                    , lreflect_vis              & ! intent(out)
@@ -267,12 +309,13 @@ subroutine copy_nl(copy_type)
                                    , day_sec                   & ! intent(in)
                                    , hr_sec                    & ! intent(in)
                                    , min_sec                   ! ! intent(in)
-
+   use fusion_fission_coms  , only : ifusion                   ! ! intent(out)
    implicit none
    !----- Arguments. ----------------------------------------------------------------------!
    character(len=*), intent(in) :: copy_type
    !----- Internal variables. -------------------------------------------------------------!
    integer                      :: ifm
+   integer, dimension(n_pft)    :: idx
    !---------------------------------------------------------------------------------------!
 
    !---------------------------------------------------------------------------------------!
@@ -295,6 +338,7 @@ subroutine copy_nl(copy_type)
       iyearz                    = nl%iyearz
       dtlsm                     = nl%dtlsm
       radfrq                    = nl%radfrq
+      month_yrstep              = nl%month_yrstep
 
       ifoutput                  = nl%ifoutput
       idoutput                  = nl%idoutput
@@ -302,6 +346,7 @@ subroutine copy_nl(copy_type)
       iqoutput                  = nl%iqoutput
       iyoutput                  = nl%iyoutput
       itoutput                  = nl%itoutput
+      iooutput                  = nl%iooutput
       isoutput                  = nl%isoutput
 
       iadd_site_means           = nl%iadd_site_means
@@ -330,14 +375,20 @@ subroutine copy_nl(copy_type)
       ied_init_mode             = nl%ied_init_mode
 
       isoilflg                  = nl%isoilflg
+      islcolflg                 = nl%islcolflg
       nslcon                    = nl%nslcon
       isoilcol                  = nl%isoilcol
       slxclay                   = nl%slxclay
       slxsand                   = nl%slxsand
+      slsoc                     = nl%slsoc
+      slph                      = nl%slph
+      slcec                     = nl%slcec
+      sldbd                     = nl%sldbd
       slmstr(1:nzgmax)          = nl%slmstr(1:nzgmax)
       stgoff(1:nzgmax)          = nl%stgoff(1:nzgmax)
 
       soil_database             = nl%soil_database
+      slcol_database            = nl%slcol_database
       veg_database              = nl%veg_database
       lu_database               = nl%lu_database
       plantation_file           = nl%plantation_file
@@ -345,10 +396,12 @@ subroutine copy_nl(copy_type)
       thsums_database           = nl%thsums_database
 
       ed_met_driver_db          = nl%ed_met_driver_db
+      obstime_db                = nl%obstime_db
       soilstate_db              = nl%soilstate_db
       soildepth_db              = nl%soildepth_db
       isoilstateinit            = nl%isoilstateinit
       isoildepthflg             = nl%isoildepthflg
+      soil_hydro_scheme         = nl%soil_hydro_scheme
       isoilbc                   = nl%isoilbc
       sldrain                   = nl%sldrain
 
@@ -367,16 +420,19 @@ subroutine copy_nl(copy_type)
       ivegt_dynamics            = nl%ivegt_dynamics
       ibigleaf                  = nl%ibigleaf
       integration_scheme        = nl%integration_scheme
+      nsub_euler                = nl%nsub_euler
       rk4_tolerance             = nl%rk4_tolerance
       ibranch_thermo            = nl%ibranch_thermo
       iphysiol                  = nl%iphysiol
       iallom                    = nl%iallom
+      economics_scheme          = nl%economics_scheme
       igrass                    = nl%igrass
       iphen_scheme              = nl%iphen_scheme
       repro_scheme              = nl%repro_scheme
       lapse_scheme              = nl%lapse_scheme
       crown_mod                 = nl%crown_mod
       icanrad                   = nl%icanrad
+      ihrzrad                   = nl%ihrzrad
       ltrans_vis                = nl%ltrans_vis
       ltrans_nir                = nl%ltrans_nir
       lreflect_vis              = nl%lreflect_vis
@@ -385,10 +441,19 @@ subroutine copy_nl(copy_type)
       orient_grass              = nl%orient_grass
       clump_tree                = nl%clump_tree
       clump_grass               = nl%clump_grass
+      igoutput                  = nl%igoutput
+      gfilout                   = nl%gfilout
       h2o_plant_lim             = nl%h2o_plant_lim
+      plant_hydro_scheme        = nl%plant_hydro_scheme
+      istomata_scheme           = nl%istomata_scheme
+      istruct_growth_scheme     = nl%istruct_growth_scheme
+      istem_respiration_scheme  = nl%istem_respiration_scheme
+      trait_plasticity_scheme   = nl%trait_plasticity_scheme
       iddmort_scheme            = nl%iddmort_scheme
       cbr_scheme                = nl%cbr_scheme
       ddmort_const              = nl%ddmort_const
+      carbon_mortality_scheme   = nl%carbon_mortality_scheme
+      hydraulic_mortality_scheme= nl%hydraulic_mortality_scheme
       vmfact_c3                 = nl%vmfact_c3
       vmfact_c4                 = nl%vmfact_c4
       mphoto_trc3               = nl%mphoto_trc3
@@ -423,6 +488,21 @@ subroutine copy_nl(copy_type)
       fire_parameter            = nl%fire_parameter
       sm_fire                   = nl%sm_fire
       ianth_disturb             = nl%ianth_disturb
+      sl_scale                  = nl%sl_scale
+      sl_yr_first               = nl%sl_yr_first
+      sl_nyrs                   = nl%sl_nyrs
+      sl_pft                    = nl%sl_pft
+      sl_prob_harvest           = nl%sl_prob_harvest
+      sl_mindbh_harvest         = nl%sl_mindbh_harvest
+      sl_biomass_harvest        = nl%sl_biomass_harvest
+      sl_skid_rel_area          = nl%sl_skid_rel_area
+      sl_skid_s_gtharv          = nl%sl_skid_s_gtharv
+      sl_skid_s_ltharv          = nl%sl_skid_s_ltharv
+      sl_felling_s_ltharv       = nl%sl_felling_s_ltharv
+      cl_fseeds_harvest         = nl%cl_fseeds_harvest
+      cl_fstorage_harvest       = nl%cl_fstorage_harvest
+      cl_fleaf_harvest          = nl%cl_fleaf_harvest
+
       decomp_scheme             = nl%decomp_scheme
 
       icanturb                  = nl%icanturb
@@ -436,6 +516,7 @@ subroutine copy_nl(copy_type)
       ipercol                   = nl%ipercol
 
       include_these_pft         = nl%include_these_pft
+      pasture_stock             = nl%pasture_stock
       agri_stock                = nl%agri_stock
       plantation_stock          = nl%plantation_stock
       pft_1st_check             = nl%pft_1st_check
@@ -474,12 +555,12 @@ subroutine copy_nl(copy_type)
       iedcnfgf                  = nl%iedcnfgf
       event_file                = nl%event_file
       phenpath                  = nl%phenpath
+      ifusion                   = nl%ifusion
       maxsite                   = nl%maxsite
       maxpatch                  = nl%maxpatch
       maxcohort                 = nl%maxcohort
       min_site_area             = nl%min_site_area
       min_patch_area            = nl%min_patch_area
-      ioptinpt                  = nl%ioptinpt
       zrough                    = nl%zrough
 
       dt_census                 = nl%dt_census
@@ -617,10 +698,25 @@ subroutine copy_nl(copy_type)
 
 
    !----- Sort up the chosen PFTs. --------------------------------------------------------!
-   where (include_these_pft < 1 .or. include_these_pft == undef_integer) 
-      include_these_pft=huge(1)
+   where (include_these_pft < 1 .or. include_these_pft > n_pft) 
+      include_these_pft = skip_integer
    end where
    call sort_up(include_these_pft,n_pft)
+   !---------------------------------------------------------------------------------------!
+
+
+
+
+   !----- Sort up the PFTs that may be logged. --------------------------------------------!
+   where (sl_pft < 1 .or. sl_pft > n_pft)
+      sl_pft            = skip_integer
+      sl_mindbh_harvest = skip_real
+      sl_prob_harvest   = skip_real
+   end where
+   call rank_up_i(n_pft,sl_pft,idx)
+   sl_pft           (idx) = sl_pft(:)
+   sl_mindbh_harvest(idx) = sl_mindbh_harvest(:)
+   sl_prob_harvest  (idx) = sl_prob_harvest(:)
    !---------------------------------------------------------------------------------------!
 
       
@@ -666,12 +762,129 @@ subroutine copy_nl(copy_type)
                         ( unitstate == 1 .and. frqstate == 1.      )      )
    history_dail     = unitstate == 0 .and. frqstate < day_sec
    history_eorq     = unitstate <= 1
-   fast_diagnostics = ifoutput /= 0 .or. idoutput /= 0 .or.                                &
+   fast_diagnostics = ifoutput /= 0 .or. idoutput /= 0 .or. iooutput /= 0 .or.             &
                       imoutput /= 0 .or. iqoutput /= 0 .or. itoutput /= 0
    !---------------------------------------------------------------------------------------!
 
 
    return
 end subroutine copy_nl
+!==========================================================================================!
+!==========================================================================================!
+
+
+
+
+
+
+!==========================================================================================!
+!==========================================================================================!
+!     This subroutine checks whether or not to restore a simulation.                       !
+!------------------------------------------------------------------------------------------!
+subroutine restore_nl()
+   use ename_coms  , only : nl            ! ! intent(inout)
+   use grid_coms   , only : ngrids        ! ! intent(in)
+   use ed_misc_coms, only : sfilout       & ! intent(in)
+                          , runtype       & ! intent(inout)
+                          , iyearh        & ! intent(inout)
+                          , imonthh       & ! intent(inout)
+                          , idateh        & ! intent(inout)
+                          , itimeh        & ! intent(inout)
+                          , sfilin        & ! intent(inout)
+                          , restore_file  ! ! intent(out)
+   implicit none
+   !----- Local variables. ----------------------------------------------------------------!
+   logical :: is_restore
+   integer :: i
+   integer :: ierr
+   integer :: iyearr
+   integer :: imonthr
+   integer :: idater
+   integer :: itimer
+   !---------------------------------------------------------------------------------------!
+
+
+   !----- This file name points to the last time, which can be used for restoring jobs. ---!
+   restore_file = trim(sfilout)//'_restore_time.txt'
+   !---------------------------------------------------------------------------------------!
+
+
+   !---------------------------------------------------------------------------------------!
+   !       Check whether to restore the simulation or start from beginning.                !
+   !---------------------------------------------------------------------------------------!
+   select case (trim(runtype))
+   case ('RESTORE')
+      !------ Check whether or not the file exists. ---------------------------------------!
+      inquire(file=trim(restore_file),exist=is_restore)
+      !------------------------------------------------------------------------------------!
+
+
+      !------------------------------------------------------------------------------------!
+      !      We only restore a simulation if we can successfully read the file.            !
+      !------------------------------------------------------------------------------------!
+      if (is_restore) then
+         !----- Read the restoring date. --------------------------------------------------!
+         open (unit=55,file=trim(restore_file),status='old',form='formatted')
+         read (unit=55,fmt=*,iostat=ierr) iyearr,imonthr,idater,itimer
+         close(unit=55,status='keep')
+         !---------------------------------------------------------------------------------!
+
+
+         !---------------------------------------------------------------------------------!
+         !      In case the file was successfully read, turn this simulation into a        !
+         ! 'HISTORY' run, otherwise, assume 'INITIAL' run.                                 !
+         !---------------------------------------------------------------------------------!
+         select case (ierr)
+         case (0)
+            !------------------------------------------------------------------------------!
+            !      File restore_file was successfully read. Restore the simulation.        !
+            !------------------------------------------------------------------------------!
+
+
+            !----- Update the namelist itself as some variables may be copied. ------------!
+            nl%runtype = 'HISTORY'
+            nl%iyearh  = iyearr
+            nl%imonthh = imonthr
+            nl%idateh  = idater
+            nl%itimeh  = itimer
+            do i=1,ngrids
+               nl%sfilin(i)  = trim(sfilout)
+            end do
+            !------------------------------------------------------------------------------!
+
+
+            !----- Update the memory variables too (though they may be overwritten). ------!
+            runtype = 'HISTORY'
+            iyearh  = iyearr
+            imonthh = imonthr
+            idateh  = idater
+            itimeh  = itimer
+            do i=1,ngrids
+               sfilin(i)  = trim(sfilout)
+            end do
+            !------------------------------------------------------------------------------!
+         case default
+            !----- Problems loading restore_file, start from the beginning. ---------------!
+            runtype = 'INITIAL'
+            write (unit=*,fmt='(a,1x,i5)') ' IERR = ',ierr
+            call fatal_error('File '//trim(restore_file)//' found but it isn''t readable!' &
+                            ,'restore_nl','ed_load_namelist.f90')
+            !------------------------------------------------------------------------------!
+         end select
+         !---------------------------------------------------------------------------------!
+      else
+         !----- File doesn't exist, use INITIAL instead. ----------------------------------!
+         runtype = 'INITIAL'
+         call warning('File '//trim(restore_file)//' not found, using INITIAL settings!'   &
+                     ,'restore_nl','ed_load_namelist.f90')
+         !---------------------------------------------------------------------------------!
+      end if
+      !------------------------------------------------------------------------------------!
+   end select
+   !---------------------------------------------------------------------------------------!
+
+
+   return
+end subroutine restore_nl
 !==========================================================================================!
 !==========================================================================================!

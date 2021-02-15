@@ -18,15 +18,15 @@ module therm_lib
                                                           !    ative methods.  The smaller
                                                           !    the value, the more accurate
                                                           !    the result, but smaller
-                                                          !    values will slow down the 
+                                                          !    values will slow down the
                                                           !    run.
    integer     , parameter ::   maxfpo = 60               ! Maximum # of iterations before
-                                                          !    crashing for false position 
+                                                          !    crashing for false position
                                                           !    method.
    integer     , parameter ::   maxit  = 150              ! Maximum # of iterations before
                                                           !    crashing, for other methods.
    integer     , parameter ::   maxlev = 16               ! Maximum # of levels for adap-
-                                                          !    tive quadrature methods.    
+                                                          !    tive quadrature methods.
    logical     , parameter ::   newthermo = .true.        ! Use new thermodynamics [T|F]
    !---------------------------------------------------------------------------------------!
 
@@ -134,10 +134,10 @@ module therm_lib
       real(kind=4), intent(out), optional :: ttfunout ! Interpolation function
       real(kind=4), intent(out), optional :: l2funout ! Function for low temperatures
       !----- Local variables. -------------------------------------------------------------!
-      real(kind=4)                        :: l1fun    ! 
-      real(kind=4)                        :: ttfun    ! 
-      real(kind=4)                        :: l2fun    ! 
-      real(kind=4)                        :: x        ! 
+      real(kind=4)                        :: l1fun    !
+      real(kind=4)                        :: ttfun    !
+      real(kind=4)                        :: l2fun    !
+      real(kind=4)                        :: x        !
       !------------------------------------------------------------------------------------!
 
 
@@ -252,7 +252,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -388,7 +388,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -532,7 +532,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -814,7 +814,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -958,7 +958,6 @@ module therm_lib
       !----- Optional arguments. ----------------------------------------------------------!
       logical     , intent(in), optional :: useice ! May use ice thermodynamics?   [   T|F]
       !----- Local variables. -------------------------------------------------------------!
-      real(kind=4)                       :: desdt  ! Derivative of vapour pressure [  Pa/K]
       logical                            :: frozen ! Use the ice thermodynamics    [   T|F]
       !------------------------------------------------------------------------------------!
 
@@ -970,7 +969,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -1104,7 +1103,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -1194,7 +1193,7 @@ module therm_lib
          if (converged) then
             tslf = 0.5 * (tempa+tempz)
             return
-         elseif (fun == 0.0) then 
+         elseif (fun == 0.0) then
             !----- Converged by luck. -----------------------------------------------------!
             tslf = tempz
             return
@@ -1308,7 +1307,7 @@ module therm_lib
          call fatal_error('Temperature didn''t converge, we give up!!!'                    &
                          ,'tslf','therm_lib.f90')
       end if
-      
+
       return
    end function tslf
    !=======================================================================================!
@@ -1494,7 +1493,7 @@ module therm_lib
          call fatal_error('Temperature didn''t converge, we give up!!!'                    &
                          ,'tsif','therm_lib.f90')
       end if
-      
+
       return
    end function tsif
    !=======================================================================================!
@@ -1530,7 +1529,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. pvap < es3ple
-      else 
+      else
          frozen = bulk_on .and. pvap < es3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -2025,13 +2024,13 @@ module therm_lib
       real(kind=4)                       :: psat    ! Saturation vapour pressure   [    Pa]
       logical                            :: frozen  ! Will use ice saturation now  [   T|F]
       !------------------------------------------------------------------------------------!
-      
+
       !------------------------------------------------------------------------------------!
       !    Check whether we should use ice or liquid saturation.                           !
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -2215,13 +2214,13 @@ module therm_lib
       real(kind=4)                       :: psat    ! Saturation vapour pressure   [    Pa]
       logical                            :: frozen  ! Will use ice saturation now  [   T|F]
       !------------------------------------------------------------------------------------!
-      
+
       !------------------------------------------------------------------------------------!
       !    Check whether we should use ice or liquid saturation.                           !
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice  .and. temp < t3ple
-      else 
+      else
          frozen = bulk_on .and. temp < t3ple
       end if
       !------------------------------------------------------------------------------------!
@@ -2448,6 +2447,42 @@ module therm_lib
 
    !=======================================================================================!
    !=======================================================================================!
+   !     This function finds the dry-air molar density (mol/m3), using the ideal gas law.  !
+   !---------------------------------------------------------------------------------------!
+   real(kind=4) function idealdmolsh(pres,temp,qvpr)
+      use consts_coms, only : rmol & ! intent(in)
+                            , ep   ! ! intent(in)
+      implicit none
+      !----- Arguments --------------------------------------------------------------------!
+      real(kind=4), intent(in)           :: pres ! Pressure                        [    Pa]
+      real(kind=4), intent(in)           :: temp ! Temperature                     [     K]
+      real(kind=4), intent(in)           :: qvpr ! Vapour specific mass            [ kg/kg]
+      !----- Local variables. -------------------------------------------------------------!
+      real(kind=4)                       :: pdry ! Dry-air pressure                [    Pa]
+      !------------------------------------------------------------------------------------!
+
+
+      !----- Find the partial pressure of water vapour. -----------------------------------!
+      pdry = pres * (1.0 - qvpr / (ep + (1.0 - ep) * qvpr))
+      !------------------------------------------------------------------------------------!
+
+
+      !----- Convert using a generalised function. ----------------------------------------!
+      idealdmolsh = pdry / (rmol * temp)
+      !------------------------------------------------------------------------------------!
+
+      return
+   end function idealdmolsh
+   !=======================================================================================!
+   !=======================================================================================!
+
+
+
+
+
+
+   !=======================================================================================!
+   !=======================================================================================!
    !     This function computes reduces the pressure from the reference height to the      !
    ! canopy height by assuming hydrostatic equilibrium.  For simplicity, we assume that    !
    ! R and cp are constants (in reality they are dependent on humidity).                   !
@@ -2646,7 +2681,7 @@ module therm_lib
       use consts_coms, only : cice           & ! intent(in)
                             , cliq           & ! intent(in)
                             , tsupercool_liq ! ! intent(in)
-                            
+
       implicit none
       !----- Arguments --------------------------------------------------------------------!
       real(kind=4), intent(in) :: temp  ! Temperature                              [     K]
@@ -2675,19 +2710,19 @@ module therm_lib
 
    !=======================================================================================!
    !=======================================================================================!
-   !     This function computes the extensive internal energy of water [J/m²] or [  J/m³], !
-   ! given the temperature [K], the heat capacity of the "dry" part [J/m²/K] or [J/m³/K],  !
-   ! water mass [ kg/m²] or [ kg/m³], and liquid fraction [---].                           !
+   !     This function computes the extensive internal energy of water [J/m2] or [  J/m2], !
+   ! given the temperature [K], the heat capacity of the "dry" part [J/m2/K] or [J/m3/K],  !
+   ! water mass [ kg/m2] or [ kg/m3], and liquid fraction [---].                           !
    !---------------------------------------------------------------------------------------!
    real(kind=4) function cmtl2uext(dryhcap,wmass,temp,fliq)
       use consts_coms, only : cice           & ! intent(in)
                             , cliq           & ! intent(in)
                             , tsupercool_liq ! ! intent(in)
-                            
+
       implicit none
       !----- Arguments. -------------------------------------------------------------------!
-      real(kind=4), intent(in)  :: dryhcap ! Heat cap. of "dry" part   [J/m²/K] or [J/m³/K]
-      real(kind=4), intent(in)  :: wmass   ! Water mass                [ kg/m²] or [ kg/m³]
+      real(kind=4), intent(in)  :: dryhcap ! Heat cap. of "dry" part   [J/m2/K] or [J/m3/K]
+      real(kind=4), intent(in)  :: wmass   ! Water mass                [ kg/m2] or [ kg/m3]
       real(kind=4), intent(in)  :: temp    ! Temperature                           [     K]
       real(kind=4), intent(in)  :: fliq    ! Liquid fraction (0-1)                 [   ---]
       !------------------------------------------------------------------------------------!
@@ -2728,7 +2763,7 @@ module therm_lib
       use consts_coms, only : cpdry          & ! intent(in)
                             , cph2o          & ! intent(in)
                             , tsupercool_vap ! ! intent(in)
-                            
+
       implicit none
       !----- Arguments. -------------------------------------------------------------------!
       real(kind=4), intent(in) :: temp   ! Temperature                             [     K]
@@ -2755,7 +2790,7 @@ module therm_lib
       !     Enthalpy is the combination of dry and moist enthalpies, with the latter being !
       ! allowed to change phase.                                                           !
       !------------------------------------------------------------------------------------!
-      tq2enthalpy = (1.0 - shv) * cpdry * temp + shv * cph2o * (temp - tsupercool_vap)  
+      tq2enthalpy = (1.0 - shv) * cpdry * temp + shv * cph2o * (temp - tsupercool_vap)
       !------------------------------------------------------------------------------------!
 
       return
@@ -2783,7 +2818,7 @@ module therm_lib
       use consts_coms, only : cpdry          & ! intent(in)
                             , cph2o          & ! intent(in)
                             , tsupercool_vap ! ! intent(in)
-                            
+
       implicit none
       !----- Arguments --------------------------------------------------------------------!
       real(kind=4), intent(in) :: enthalpy ! Specific enthalpy                     [  J/kg]
@@ -2962,7 +2997,7 @@ module therm_lib
    !     This function computes the liquid potential temperature derivative with respect   !
    ! to temperature, useful in iterative methods.                                          !
    !---------------------------------------------------------------------------------------!
-   real(kind=4) function dthetail_dt(condconst,thil,exner,pres,temp,rliq,ricein)
+   real(kind=4) function dthetail_dt(condconst,thil,pres,temp,rliq,ricein)
       use consts_coms, only : alvl3      & ! intent(in)
                             , alvi3      & ! intent(in)
                             , dcpvi      & ! intent(in)
@@ -2977,15 +3012,14 @@ module therm_lib
       !----- Arguments --------------------------------------------------------------------!
       logical     , intent(in)           :: condconst  ! Condensation is constant? [   T|F]
       real(kind=4), intent(in)           :: thil       ! Ice liquid pot. temp.     [     K]
-      real(kind=4), intent(in)           :: exner      ! Exner function            [J/kg/K]
       real(kind=4), intent(in)           :: pres       ! Pressure                  [    Pa]
       real(kind=4), intent(in)           :: temp       ! Temperature               [     K]
       real(kind=4), intent(in)           :: rliq       ! Liquid mixing ratio       [ kg/kg]
       real(kind=4), intent(in), optional :: ricein     ! Ice mixing ratio          [ kg/kg]
       !----- Local variables --------------------------------------------------------------!
       real(kind=4)                       :: rice       ! Ice mixing ratio or 0.    [ kg/kg]
-      real(kind=4)                       :: ldrst      ! L × d(rs)/dT × T          [  J/kg]
-      real(kind=4)                       :: rdlt       ! r × d(L)/dT × T           [  J/kg]
+      real(kind=4)                       :: ldrst      ! L x d(rs)/dT x T          [  J/kg]
+      real(kind=4)                       :: rdlt       ! r x d(L)/dT x T           [  J/kg]
       real(kind=4)                       :: hh         ! Sensible heat enthalpy    [  J/kg]
       real(kind=4)                       :: qq         ! Latent heat enthalpy      [  J/kg]
       logical                            :: thereisice ! Is ice present            [   ---]
@@ -3026,7 +3060,7 @@ module therm_lib
          !---------------------------------------------------------------------------------!
          !      Find the latent heat enthalpy.  If using the old thermodynamics, we use    !
          ! the latent heat at T = T3ple, otherwise we use the temperature-dependent one.   !
-         ! The term r × d(L)/dT × T is computed only when we use the new thermodynamics.   !
+         ! The term r x d(L)/dT x T is computed only when we use the new thermodynamics.   !
          !---------------------------------------------------------------------------------!
          if (newthermo) then
             qq   = alvl(temp) * rliq + alvi(temp) * rice
@@ -3040,7 +3074,7 @@ module therm_lib
 
 
          !---------------------------------------------------------------------------------!
-         !    This is the term L×[d(rs)/dt]×T. L may be either the vapourisation or        !
+         !    This is the term Lx[d(rs)/dt]xT. L may be either the vapourisation or        !
          ! sublimation latent heat, depending on the temperature and whether we are consi- !
          ! dering ice or not.  We still need to check whether latent heat is a function of !
          ! temperature or not.  Also, if condensation mixing ratio is constant, then this  !
@@ -3121,7 +3155,7 @@ module therm_lib
       real(kind=4), intent(in) :: t1stguess ! 1st. guess for temperature           [     K]
       !----- Local variables. -------------------------------------------------------------!
       real(kind=4)             :: til       ! Ice liquid temperature               [     K]
-      real(kind=4)             :: deriv     ! Function derivative 
+      real(kind=4)             :: deriv     ! Function derivative
       real(kind=4)             :: fun       ! Function for which we seek a root.
       real(kind=4)             :: funa      ! Smallest  guess function
       real(kind=4)             :: funz      ! Largest   guess function
@@ -3177,7 +3211,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       tempz     = t1stguess
       fun       = theta_iceliq(exner,tempz,rliq,rice)
-      deriv     = dthetail_dt(.true.,fun,exner,pres,tempz,rliq,rice)
+      deriv     = dthetail_dt(.true.,fun,pres,tempz,rliq,rice)
       fun       = fun - thil
       !------------------------------------------------------------------------------------!
 
@@ -3192,7 +3226,7 @@ module therm_lib
          thil2temp = tempz
          converged = .true.
          return
-      else 
+      else
          tempa = tempz
          funa  = fun
       end if
@@ -3205,7 +3239,7 @@ module therm_lib
          funa  = fun
          tempz = tempa - fun/deriv
          fun   = theta_iceliq(exner,tempz,rliq,rice)
-         deriv = dthetail_dt(.true.,fun,exner,pres,tempz,rliq,rice)
+         deriv = dthetail_dt(.true.,fun,pres,tempz,rliq,rice)
          fun   = fun - thil
          !<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><!
          !><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!
@@ -3241,7 +3275,7 @@ module therm_lib
       else
          if (abs(fun-funa) < toler*tempa) then
             delta = 100.*toler*tempa
-         else 
+         else
             delta = max(abs(funa * (tempz-tempa)/(fun-funa)),100.*toler*tempa)
          end if
          tempz = tempa + delta
@@ -3274,7 +3308,7 @@ module therm_lib
          !     Now that we updated the guess, check whether they are really close. If so,  !
          ! it converged, I can use this as my guess.                                       !
          !---------------------------------------------------------------------------------!
-         converged = abs(thil2temp-tempa)< toler*thil2temp 
+         converged = abs(thil2temp-tempa)< toler*thil2temp
          if (converged) exit bisloop
 
          !------ Finding the new function -------------------------------------------------!
@@ -3326,11 +3360,11 @@ module therm_lib
          write (unit=*,fmt='(a,1x,f12.4)' ) 'Exner           [J/kg/K] =',exner
          write (unit=*,fmt='(a,1x,f12.4)' ) 'rliq            [  g/kg] =',1000.*rliq
          write (unit=*,fmt='(a,1x,f12.4)' ) 'rice            [  g/kg] =',1000.*rice
-         write (unit=*,fmt='(a,1x,f12.4)' ) 't1stguess       [    °C] =',t1stguess-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 't1stguess       [  degC] =',t1stguess-t00
          write (unit=*,fmt='(a)') ' '
          write (unit=*,fmt='(a)') ' Last iteration outcome (downdraft values).'
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'tempa           [    °C] =',tempa-t00
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'tempz           [    °C] =',tempz-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'tempa           [  degC] =',tempa-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'tempz           [  degC] =',tempz-t00
          write (unit=*,fmt='(a,1x,f12.4)' ) 'fun             [     K] =',fun
          write (unit=*,fmt='(a,1x,f12.4)' ) 'funa            [     K] =',funa
          write (unit=*,fmt='(a,1x,f12.4)' ) 'funz            [     K] =',funz
@@ -3723,7 +3757,7 @@ module therm_lib
       !----- Local variables for iterative method -----------------------------------------!
       real(kind=4)                       :: pvap      ! Sat. vapour pressure
       real(kind=4)                       :: theta     ! Potential temperature
-      real(kind=4)                       :: deriv     ! Function derivative 
+      real(kind=4)                       :: deriv     ! Function derivative
       real(kind=4)                       :: funnow    ! Function for which we seek a root.
       real(kind=4)                       :: funa      ! Smallest guess function
       real(kind=4)                       :: funz      ! Largest guess function
@@ -3768,7 +3802,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       !     The 1st. guess, we assume we are lucky and right at the LCL.                   !
       !------------------------------------------------------------------------------------!
-      pvap      = pres * rtot / (ep + rtot) 
+      pvap      = pres * rtot / (ep + rtot)
       tlclz     = tslif(pvap,frozen)
       theta     = tlclz * (es00 / pvap) ** rocp
       funnow    = thetaeivs(theta,tlclz,rtot,0.,0.)
@@ -3908,7 +3942,7 @@ module therm_lib
             converged = abs(tlcl-tlcla) < toler * tlcl
             if (converged) then
                exit fpoloop
-            elseif (funnow*funa < 0.) then 
+            elseif (funnow*funa < 0.) then
                tlclz = tlcl
                funz  = funnow
                !----- If we are updating zside again, modify aside (Illinois method) ------!
@@ -3921,12 +3955,12 @@ module therm_lib
                !----- If we are updating aside again, modify zside (Illinois method) ------!
                if (.not.zside) funz = funz * 0.5
                !----- We just updated aside, setting zside to false -----------------------!
-               zside = .false. 
+               zside = .false.
             end if
          end do fpoloop
       end if
 
-      if (converged) then 
+      if (converged) then
          thetaeiv2thil  = theiv * exp (- alvl(tlcl) * rtot / (cpdry * tlcl) )
          !<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><!
          !><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!
@@ -3950,9 +3984,9 @@ module therm_lib
          write (unit=*,fmt='(a,1x,i12)')    '    ITERATIONS       :',itb
          write (unit=*,fmt='(a,1x,f12.5)')  '    PVAP     [   hPa]:',pvap
          write (unit=*,fmt='(a,1x,f12.5)')  '    THETA    [     K]:',theta
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCL     [    °C]:',tlcl-t00
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCLA    [    °C]:',tlcla-t00
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCLZ    [    °C]:',tlclz-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCL     [  degC]:',tlcl-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCLA    [  degC]:',tlcla-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TLCLZ    [  degC]:',tlclz-t00
          write (unit=*,fmt='(a,1x,es12.5)') '    FUNA     [     K]:',funa
          write (unit=*,fmt='(a,1x,es12.5)') '    FUNZ     [     K]:',funz
          write (unit=*,fmt='(a,1x,es12.5)') '    DERIV    [   ---]:',deriv
@@ -4004,7 +4038,7 @@ module therm_lib
       real(kind=4)                        :: exnernormi ! 1./ (Norm. Exner func.) [    ---]
       logical                             :: frozen     ! Will use ice thermodyn. [    T|F]
       !----- Local variables for iterative method -----------------------------------------!
-      real(kind=4)                        :: deriv      ! Function derivative 
+      real(kind=4)                        :: deriv      ! Function derivative
       real(kind=4)                        :: funnow     ! Current function evaluation
       real(kind=4)                        :: funa       ! Smallest guess function
       real(kind=4)                        :: funz       ! Largest guess function
@@ -4021,7 +4055,7 @@ module therm_lib
       !----- Set up the ice check, in case useice is not present. -------------------------!
       if (present(useice)) then
          frozen = useice
-      else 
+      else
          frozen = bulk_on
       end if
       !------------------------------------------------------------------------------------!
@@ -4035,7 +4069,7 @@ module therm_lib
 
 
       !------------------------------------------------------------------------------------!
-      !     The 1st. guess, no idea, guess 0°C.                                            !
+      !     The 1st. guess, no idea, guess 0degC.                                          !
       !------------------------------------------------------------------------------------!
       tempz     = t00
       theta     = tempz * exnernormi
@@ -4058,7 +4092,7 @@ module therm_lib
          !----- Updating guesses ----------------------------------------------------------!
          tempa   = tempz
          funa    = funnow
-         
+
          tempz   = tempa - funnow/deriv
          theta   = tempz * exnernormi
          rsat    = rslif(pres,tempz,frozen)
@@ -4129,7 +4163,7 @@ module therm_lib
             converged = abs(temp-tempa) < toler*temp
             if (converged) then
                exit fpoloop
-            elseif (funnow*funa < 0.) then 
+            elseif (funnow*funa < 0.) then
                tempz = temp
                funz  = funnow
                !----- If we are updating zside again, modify aside (Illinois method) ------!
@@ -4142,12 +4176,12 @@ module therm_lib
                !----- If we are updating aside again, modify zside (Illinois method) ------!
                if (.not. zside) funz = funz * 0.5
                !----- We just updated aside, setting zside to false -----------------------!
-               zside = .false. 
+               zside = .false.
             end if
          end do fpoloop
       end if
 
-      if (converged) then 
+      if (converged) then
          !----- Compute theta and rsat with temp just for consistency ---------------------!
          theta = temp * exnernormi
          rsat  = rslif(pres,temp,frozen)
@@ -4224,7 +4258,7 @@ module therm_lib
       logical     , intent(in) , optional :: useice    ! May use ice thermodyn.?  [    T|F]
       !----- Local variables. -------------------------------------------------------------!
       real(kind=4)                        :: pvap      ! Sat. vapour pressure
-      real(kind=4)                        :: deriv     ! Function derivative 
+      real(kind=4)                        :: deriv     ! Function derivative
       real(kind=4)                        :: funnow    ! Current function evaluation
       real(kind=4)                        :: funa      ! Smallest guess function
       real(kind=4)                        :: funz      ! Largest  guess function
@@ -4245,7 +4279,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       if (present(useice)) then
          frozen = useice
-      else 
+      else
          frozen = bulk_on
       end if
       !------------------------------------------------------------------------------------!
@@ -4274,7 +4308,7 @@ module therm_lib
       tlclz     = 55. + 2840. / (3.5 * log(temp) - log(0.01*pvap) - 4.805)
       pvap      = eslif(tlclz,frozen)
       funnow    = tlclz * (es00/pvap)**rocp - thil
-      deriv     = (funnow+thil)*(1./tlclz - rocp*eslifp(tlclz,frozen)/pvap) 
+      deriv     = (funnow+thil)*(1./tlclz - rocp*eslifp(tlclz,frozen)/pvap)
       !------------------------------------------------------------------------------------!
 
       !<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!
@@ -4433,7 +4467,7 @@ module therm_lib
             if (funnow == 0. .or. converged) then
                converged = .true.
                exit fpoloop
-            elseif (funnow*funa < 0.) then 
+            elseif (funnow*funa < 0.) then
                tlclz = tlcl
                funz  = funnow
                !----- If we are updating zside again, modify aside (Illinois method) ------!
@@ -4453,7 +4487,7 @@ module therm_lib
 
 
                !----- We have just updated aside, set zside to false. ---------------------!
-               zside = .false. 
+               zside = .false.
                !---------------------------------------------------------------------------!
             end if
          end do fpoloop
@@ -4465,7 +4499,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       !     Check whether we have succeeded or not.                                        !
       !------------------------------------------------------------------------------------!
-      if (converged) then 
+      if (converged) then
          !----- We have found a solution, find the remaining LCL properties. --------------!
          pvap  = eslif(tlcl,frozen)
          plcl  = (ep + rvap) * pvap / rvap
@@ -4491,13 +4525,13 @@ module therm_lib
          write (unit=*,fmt='(a)') ' '
          write (unit=*,fmt='(a,1x,f12.4)' ) 'theta_il        [     K] =',thil
          write (unit=*,fmt='(a,1x,f12.4)' ) 'Pressure        [   hPa] =',0.01*pres
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'Temperature     [    °C] =',temp-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'Temperature     [  degC] =',temp-t00
          write (unit=*,fmt='(a,1x,f12.4)' ) 'rtot            [  g/kg] =',1000.*rtot
          write (unit=*,fmt='(a,1x,f12.4)' ) 'rvap            [  g/kg] =',1000.*rvap
          write (unit=*,fmt='(a)') ' '
          write (unit=*,fmt='(a)') ' Last iteration outcome.'
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlcla           [    °C] =',tlcla-t00
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlclz           [    °C] =',tlclz-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlcla           [  degC] =',tlcla-t00
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlclz           [  degC] =',tlclz-t00
          write (unit=*,fmt='(a,1x,f12.4)' ) 'fun             [     K] =',funnow
          write (unit=*,fmt='(a,1x,f12.4)' ) 'funa            [     K] =',funa
          write (unit=*,fmt='(a,1x,f12.4)' ) 'funz            [     K] =',funz
@@ -4505,7 +4539,7 @@ module therm_lib
          write (unit=*,fmt='(a,1x,es12.4)') 'toler           [  ----] =',toler
          write (unit=*,fmt='(a,1x,es12.4)') 'error           [  ----] ='                   &
                                                             ,abs(tlclz-tlcla)/tlclz
-         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlcl            [    °C] =',tlcl
+         write (unit=*,fmt='(a,1x,f12.4)' ) 'tlcl            [  degC] =',tlcl
          call fatal_error('TLCL didn''t converge, gave up!','lcl_il','therm_lib.f90')
       end if
       return
@@ -4554,7 +4588,7 @@ module therm_lib
       !----- Local variables --------------------------------------------------------------!
       real(kind=4)                :: tempa     ! Lower bound for regula falsi iteration
       real(kind=4)                :: tempz     ! Upper bound for regula falsi iteration
-      real(kind=4)                :: t1stguess ! Book keeping temperature 1st guess 
+      real(kind=4)                :: t1stguess ! Book keeping temperature 1st guess
       real(kind=4)                :: fun1st    ! Book keeping 1st guess function
       real(kind=4)                :: funa      ! Function evaluation at tempa
       real(kind=4)                :: funz      ! Function evaluation at tempz
@@ -4629,7 +4663,7 @@ module therm_lib
       !------------------------------------------------------------------------------------!
       funnow = theta_iceliq(exner,tempz,rliq,rice)
       !----- Updating the derivative. -----------------------------------------------------!
-      deriv  = dthetail_dt(.false.,funnow,exner,pres,tempz,rliq,rice)
+      deriv  = dthetail_dt(.false.,funnow,pres,tempz,rliq,rice)
       funnow = funnow - thil
       fun1st = funnow
       !------------------------------------------------------------------------------------!
@@ -4676,7 +4710,7 @@ module therm_lib
          !----- Updating the function -----------------------------------------------------!
          funnow = theta_iceliq(exner,tempz,rliq,rice)
          !----- Updating the derivative. --------------------------------------------------!
-         deriv  = dthetail_dt(.false.,funnow,exner,pres,tempz,rliq,rice)
+         deriv  = dthetail_dt(.false.,funnow,pres,tempz,rliq,rice)
          funnow = funnow - thil
 
          !<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><!
@@ -4686,7 +4720,7 @@ module therm_lib
          !  ,'rice=',1000.*rice,'rvap=',1000.*rvap,'fun=',funnow,'deriv=',deriv
          !<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><!
          !><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!
-         
+
          converged = abs(tempa-tempz) < toler*tempz
          !---------------------------------------------------------------------------------!
          !   Convergence. The temperature will be the mid-point between tempa and tempz.   !
@@ -4747,7 +4781,7 @@ module therm_lib
             tempz = tempa + delta
             funz  = funa
             !----- Just to enter at least once. The 1st time tempz=tempa-2*delta ----------!
-            zside = .false. 
+            zside = .false.
             zgssloop: do itb=1,maxfpo
                 tempz = tempa + real((-1)**itb * (itb+3)/2) * delta
                 rsat   = max(toodry,rslif(pres,tempz))
@@ -4828,11 +4862,11 @@ module therm_lib
             !    Checking for convergence or lucky guess. If it did, return, we found the  !
             ! solution. Otherwise, constrain the guesses.                                  !
             !------------------------------------------------------------------------------!
-            converged = abs(temp-tempa) < toler*temp .and. abs(temp-tempz) < toler*temp 
+            converged = abs(temp-tempa) < toler*temp .and. abs(temp-tempz) < toler*temp
             if (funnow == 0. .or. converged) then
                converged = .true.
                exit fpoloop
-            elseif (funnow*funa < 0.) then 
+            elseif (funnow*funa < 0.) then
                tempz = temp
                funz  = funnow
                !----- If we are updating zside again, modify aside (Illinois method) ------!
@@ -4896,12 +4930,12 @@ module therm_lib
          write (unit=*,fmt='(a)')           ' '
          write (unit=*,fmt='(a)')           ' -> Output: '
          write (unit=*,fmt='(a,1x,i12)')    '    ITERATIONS       :',itb
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMP     [    °C]:',temp-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMP     [  degC]:',temp-t00
          write (unit=*,fmt='(a,1x,f12.5)')  '    RVAP     [  g/kg]:',1000.*rvap
          write (unit=*,fmt='(a,1x,f12.5)')  '    RLIQ     [  g/kg]:',1000.*rliq
          write (unit=*,fmt='(a,1x,f12.5)')  '    RICE     [  g/kg]:',1000.*rice
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMPA    [    °C]:',tempa-t00
-         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMPZ    [    °C]:',tempz-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMPA    [  degC]:',tempa-t00
+         write (unit=*,fmt='(a,1x,f12.5)')  '    TEMPZ    [  degC]:',tempz-t00
          write (unit=*,fmt='(a,1x,es12.5)') '    FUNA     [     K]:',funnow
          write (unit=*,fmt='(a,1x,es12.5)') '    FUNZ     [     K]:',funnow
          write (unit=*,fmt='(a,1x,es12.5)') '    DERIV    [   ---]:',deriv
@@ -4958,8 +4992,6 @@ module therm_lib
       !----- Local variables --------------------------------------------------------------!
       real(kind=4)                :: tempa     ! Lower bound for regula falsi iteration
       real(kind=4)                :: tempz     ! Upper bound for regula falsi iteration
-      real(kind=4)                :: t1stguess ! Book keeping temperature 1st guess 
-      real(kind=4)                :: fun1st    ! Book keeping 1st guess function
       real(kind=4)                :: funa      ! Function evaluation at tempa
       real(kind=4)                :: funz      ! Function evaluation at tempz
       real(kind=4)                :: funnow    ! Function at this iteration.
@@ -5019,7 +5051,7 @@ module therm_lib
       ! theta_il associated with our guess and the actual theta_il.                        !
       !------------------------------------------------------------------------------------!
       funnow = theta_iceliq(exner,tempz,rliq,0.) ! Finding thil from our guess
-      deriv  = dthetail_dt(.false.,funnow,exner,pres,tempz,rliq)
+      deriv  = dthetail_dt(.false.,funnow,pres,tempz,rliq)
       funnow = funnow - thil ! Computing the function
       !------------------------------------------------------------------------------------!
 
@@ -5053,7 +5085,7 @@ module therm_lib
          !----- Updating the function -----------------------------------------------------!
          funnow = theta_iceliq(exner,tempz,rliq,0.)
          !----- Updating the derivative. --------------------------------------------------!
-         deriv = dthetail_dt(.false.,funnow,exner,pres,tempz,rliq)
+         deriv = dthetail_dt(.false.,funnow,pres,tempz,rliq)
          funnow = funnow - thil
 
          converged = abs(tempa-tempz) < toler*tempz
@@ -5106,7 +5138,7 @@ module therm_lib
             tempz = tempa + delta
             funz  = funa
             !----- Just to enter at least once. The 1st time tempz=tempa-2*delta ----------!
-            zside = .false. 
+            zside = .false.
             zgssloop: do itb=1,maxfpo
                tempz = tempz + real((-1)**itb * (itb+3)/2) * delta
                rsat  = max(toodry,rslf(pres,tempz))
@@ -5142,7 +5174,7 @@ module therm_lib
             if (funnow == 0. .or. converged) then
                converged = .true.
                exit fpoloop
-            elseif (funnow*funa < 0.) then 
+            elseif (funnow*funa < 0.) then
                tempz = temp
                funz  = funnow
                !----- If we are updating zside again, modify aside (Illinois method) ------!
@@ -5155,7 +5187,7 @@ module therm_lib
                !----- If we are updating aside again, modify zside (Illinois method) ------!
                if (.not.zside) funz = funz * 0.5
                !----- We just updated aside, setting zside to false -----------------------!
-               zside = .false. 
+               zside = .false.
             end if
 
          end do fpoloop
@@ -5230,8 +5262,8 @@ module therm_lib
    !=======================================================================================!
    !=======================================================================================!
    !    This subroutine computes the temperature (Kelvin) and liquid fraction from         !
-   ! extensive internal energy (J/m² or J/m³), water mass (kg/m² or kg/m³), and heat       !
-   ! capacity (J/m²/K or J/m³/K).                                                          !
+   ! extensive internal energy (J/m2 or J/m3), water mass (kg/m2 or kg/m3), and heat       !
+   ! capacity (J/m2/K or J/m3/K).                                                          !
    !---------------------------------------------------------------------------------------!
    subroutine uextcm2tl(uext,wmass,dryhcap,temp,fliq)
       use consts_coms, only : cliqi          & ! intent(in)
@@ -5244,19 +5276,19 @@ module therm_lib
                             , tsupercool_liq ! ! intent(in)
       implicit none
       !----- Arguments --------------------------------------------------------------------!
-      real(kind=4), intent(in)  :: uext    ! Extensive internal energy [  J/m²] or [  J/m³]
-      real(kind=4), intent(in)  :: wmass   ! Water mass                [ kg/m²] or [ kg/m³]
-      real(kind=4), intent(in)  :: dryhcap ! Heat cap. of "dry" part   [J/m²/K] or [J/m³/K]
+      real(kind=4), intent(in)  :: uext    ! Extensive internal energy [  J/m2] or [  J/m3]
+      real(kind=4), intent(in)  :: wmass   ! Water mass                [ kg/m2] or [ kg/m3]
+      real(kind=4), intent(in)  :: dryhcap ! Heat cap. of "dry" part   [J/m2/K] or [J/m3/K]
       real(kind=4), intent(out) :: temp    ! Temperature                           [     K]
       real(kind=4), intent(out) :: fliq    ! Liquid fraction (0-1)                 [   ---]
       !----- Local variable ---------------------------------------------------------------!
-      real(kind=4)              :: uefroz  ! qw of ice at triple pt.   [  J/m²] or [  J/m³] 
-      real(kind=4)              :: uemelt  ! qw of liq. at triple pt.  [  J/m²] or [  J/m³]
+      real(kind=4)              :: uefroz  ! qw of ice at triple pt.   [  J/m2] or [  J/m3]
+      real(kind=4)              :: uemelt  ! qw of liq. at triple pt.  [  J/m2] or [  J/m3]
       !------------------------------------------------------------------------------------!
 
 
 
-      !----- Convert melting heat to J/m² or J/m³ -----------------------------------------!
+      !----- Convert melting heat to J/m2 or J/m3 -----------------------------------------!
       uefroz = (dryhcap + wmass * cice) * t3ple
       uemelt = uefroz   + wmass * alli
       !------------------------------------------------------------------------------------!
